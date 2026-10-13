@@ -237,7 +237,7 @@ There are no blocking product decisions for the vertical slices. Early-reveal co
 - The current participant has a green **You** badge, distinct from the blue **Host** badge.
 - A participant who leaves is removed immediately from the active roster and any active vote is deleted.
 - Revealed history remains immutable when a participant leaves.
-- A host who chooses **Leave room** must confirm, then ends the room immediately for everyone.
+- The host sees only the confirmed **End room** action because leaving and ending have the same effect; participants see **Leave room**.
 - Every successful leave clears the tab's `sessionStorage` room credentials and returns to room entry.
 - The display name is stored separately in `localStorage` and reused across tabs, refreshes, and room exits.
 - Rejoining after leaving creates a new participant identifier and session.
@@ -248,5 +248,5 @@ There are no blocking product decisions for the vertical slices. Early-reveal co
 - A departed participant's old active-room token is invalid and cannot restore that identity.
 - Name storage is only a convenience and grants no room permissions.
 - Room credentials remain tab-scoped and are never moved into `localStorage`.
-- The explicit **End room** control remains available to the host; **Leave room** additionally exits the host's local view after ending.
+- The host does not receive a duplicate **Leave room** control.
 
