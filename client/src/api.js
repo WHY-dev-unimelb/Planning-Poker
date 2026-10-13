@@ -32,12 +32,13 @@ export async function joinRoom(roomCode, participantName) {
   );
 }
 
-export async function getRoom(roomCode, participantToken) {
+export async function getRoom(roomCode, participantToken, { signal } = {}) {
   return readResponse(
     await fetch(`/api/rooms/${encodeURIComponent(roomCode)}`, {
       headers: {
         Authorization: `Bearer ${participantToken}`,
       },
+      signal,
     }),
   );
 }

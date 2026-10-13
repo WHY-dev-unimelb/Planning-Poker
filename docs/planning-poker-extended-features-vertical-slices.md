@@ -296,11 +296,18 @@ Users can copy the room code, identify their own participant row, leave delibera
 - Leaving clears room credentials, returns home, and retains the display name.
 - The display name is shared across tabs through `localStorage`; room credentials remain tab-scoped in `sessionStorage`.
 - Rejoining after leaving creates a new participant identity.
+- Server validation enforces the client limits of 60 characters per name and 500 characters per story.
+- Rooms reject joins after reaching 100 participants, including the host.
+- The application remains usable when browser session storage is blocked, with refresh restoration unavailable in that case.
+- Polling requests do not overlap and stale poll responses cannot overwrite newer room actions.
+- Copy-success feedback resets after two seconds.
 
 ### Tests to run
 
 - Room-store and API tests for participant removal, vote cleanup, history immutability, token invalidation, and host ending.
 - React tests for copy feedback, **You** badges, leave confirmation, home return, and name persistence.
+- Boundary tests for name and story lengths and the 100-participant room capacity.
+- React tests for blocked session storage, sequential polling, and temporary copy feedback.
 - Full server and client regression suites and production build.
 - Manual multi-tab checks from the [Slice 14 test plan](./slice-14/slice-14-test-plan.md).
 

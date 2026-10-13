@@ -37,6 +37,7 @@ function roomSession(participants = [
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
   sessionStorage.clear();
   localStorage.clear();
 });
@@ -194,7 +195,7 @@ describe('lobby synchronization', () => {
 
   it('stops polling when the lobby is unmounted', async () => {
     const user = userEvent.setup();
-    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse(roomSession()));
 
     const view = render(<App />);
@@ -204,7 +205,61 @@ describe('lobby synchronization', () => {
 
     view.unmount();
 
-    expect(clearIntervalSpy).toHaveBeenCalled();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it('waits for the current poll before scheduling another one', async () => {
+    const user = userEvent.setup();
+    let resolvePoll;
+    const pendingPoll = new Promise((resolve) => {
+      resolvePoll = resolve;
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockReturnValueOnce(pendingPoll)
+      .mockResolvedValue(successfulResponse({ room: roomSession().room }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    expect(await screen.findByText('Alex #123')).toBeVisible();
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2), { timeout: 2500 });
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+    resolvePoll(successfulResponse({ room: roomSession().room }));
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(3), { timeout: 2500 });
+  });
+
+  it('ignores a poll response that started before a newer room action', async () => {
+    const user = userEvent.setup();
+    let resolvePoll;
+    const pendingPoll = new Promise((resolve) => {
+      resolvePoll = resolve;
+    });
+    const votingRoom = roomSession(undefined, {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    }).room;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockReturnValueOnce(pendingPoll)
+      .mockResolvedValueOnce(successfulResponse({ room: votingRoom }))
+      .mockResolvedValue(successfulResponse({ room: votingRoom }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2), { timeout: 2500 });
+
+    await user.type(screen.getByLabelText('Story'), 'Estimate login flow');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+    expect(await screen.findByRole('heading', { name: 'Voting has started' })).toBeVisible();
+
+    resolvePoll(successfulResponse({ room: roomSession().room }));
+    await Promise.resolve();
+    expect(screen.getByRole('heading', { name: 'Voting has started' })).toBeVisible();
   });
 });
 
@@ -709,6 +764,18 @@ describe('session restoration', () => {
     expect(sessionStorage.getItem('planning-poker-session')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Create a room' })).toBeVisible();
   });
+
+  it('renders when session storage access is unavailable', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Storage is blocked', 'SecurityError');
+    });
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new DOMException('Storage is blocked', 'SecurityError');
+    });
+
+    expect(() => render(<App />)).not.toThrow();
+    expect(screen.getByRole('heading', { name: 'Create a room' })).toBeVisible();
+  });
 });
 
 describe('room lifecycle', () => {
@@ -728,6 +795,44 @@ describe('room lifecycle', () => {
 
     expect(writeText).toHaveBeenCalledWith('ABC123');
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Copy' }, { timeout: 3000 }),
+    ).toBeVisible();
+  });
+
+  it('continues create and leave flows when session storage writes are blocked', async () => {
+    const user = userEvent.setup();
+    const storageSet = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(
+      key,
+    ) {
+      if (this === sessionStorage) {
+        throw new DOMException('Storage is blocked', 'SecurityError');
+      }
+      return undefined;
+    });
+    const storageRemove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function removeItem(
+      key,
+    ) {
+      if (this === sessionStorage) {
+        throw new DOMException('Storage is blocked', 'SecurityError');
+      }
+      return undefined;
+    });
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: roomSession().room }));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+    expect(await screen.findByRole('button', { name: 'Leave room' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Leave room' }));
+
+    expect(screen.getByRole('heading', { name: 'Join a room' })).toBeVisible();
+    expect(storageSet).toHaveBeenCalled();
+    expect(storageRemove).toHaveBeenCalled();
   });
 
   it('lets a participant leave, returns home, and keeps their saved name', async () => {

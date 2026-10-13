@@ -4,6 +4,9 @@ const ROOM_CODE_CHARACTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 const MAX_GENERATION_ATTEMPTS = 100;
 export const HOST_DISCONNECT_GRACE_MS = 15_000;
+export const MAX_NAME_LENGTH = 60;
+export const MAX_STORY_LENGTH = 500;
+export const MAX_ROOM_PARTICIPANTS = 100;
 export const DECK_PRESETS = Object.freeze({
   fibonacci: Object.freeze(['1', '2', '3', '5', '8', '13', '21', '?']),
   tshirt: Object.freeze(['XS', 'S', 'M', 'L', 'XL', '?']),
@@ -69,7 +72,25 @@ export function createRoomStore({
     if (!normalizedName) {
       throw new RoomValidationError(`Enter your name to ${action} a room.`);
     }
+    if (normalizedName.length > MAX_NAME_LENGTH) {
+      throw new RoomValidationError(
+        `Enter a name with ${MAX_NAME_LENGTH} characters or fewer.`,
+      );
+    }
     return normalizedName;
+  }
+
+  function normalizeStory(storyText, emptyMessage) {
+    const normalizedStory = typeof storyText === 'string' ? storyText.trim() : '';
+    if (!normalizedStory) {
+      throw new RoomValidationError(emptyMessage);
+    }
+    if (normalizedStory.length > MAX_STORY_LENGTH) {
+      throw new RoomValidationError(
+        `Enter a story with ${MAX_STORY_LENGTH} characters or fewer.`,
+      );
+    }
+    return normalizedStory;
   }
 
   function generateUniqueParticipantId(participants) {
@@ -142,6 +163,11 @@ export function createRoomStore({
     requireActiveRoom(room);
 
     const normalizedName = normalizeName(participantName, 'join');
+    if (room.participants.length >= MAX_ROOM_PARTICIPANTS) {
+      throw new RoomStateError(
+        `This room is full. It supports up to ${MAX_ROOM_PARTICIPANTS} participants.`,
+      );
+    }
     const participant = createParticipant(room.participants, normalizedName, 'participant');
     room.participants.push(participant);
 
@@ -196,10 +222,10 @@ export function createRoomStore({
       throw new RoomStateError('A story is already active.');
     }
 
-    const normalizedStory = typeof storyText === 'string' ? storyText.trim() : '';
-    if (!normalizedStory) {
-      throw new RoomValidationError('Enter a story to start voting.');
-    }
+    const normalizedStory = normalizeStory(
+      storyText,
+      'Enter a story to start voting.',
+    );
 
     room.currentStory = { text: normalizedStory };
     room.currentStoryNumber = 1;
@@ -324,10 +350,10 @@ export function createRoomStore({
       throw new RoomStateError('The next story can only start after estimates are revealed.');
     }
 
-    const normalizedStory = typeof storyText === 'string' ? storyText.trim() : '';
-    if (!normalizedStory) {
-      throw new RoomValidationError('Enter the next story to start voting.');
-    }
+    const normalizedStory = normalizeStory(
+      storyText,
+      'Enter the next story to start voting.',
+    );
 
     room.currentStory = { text: normalizedStory };
     room.currentStoryNumber += 1;

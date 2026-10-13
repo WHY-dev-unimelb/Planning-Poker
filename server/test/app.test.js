@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { createRoomStore } from '../src/rooms.js';
+import {
+  createRoomStore,
+  MAX_NAME_LENGTH,
+  MAX_ROOM_PARTICIPANTS,
+  MAX_STORY_LENGTH,
+} from '../src/rooms.js';
 
 function createTestApplication() {
   const ids = ['123', '456', '789'];
@@ -42,6 +47,17 @@ describe('POST /api/rooms', () => {
       .expect(400);
 
     expect(response.body).toEqual({ error: 'Enter your name to create a room.' });
+  });
+
+  it('rejects an oversized host name', async () => {
+    const response = await request(createTestApplication())
+      .post('/api/rooms')
+      .send({ hostName: 'A'.repeat(MAX_NAME_LENGTH + 1) })
+      .expect(400);
+
+    expect(response.body).toEqual({
+      error: `Enter a name with ${MAX_NAME_LENGTH} characters or fewer.`,
+    });
   });
 
   it('creates a room with a supported preset and rejects an unknown preset', async () => {
@@ -107,6 +123,37 @@ describe('room participation endpoints', () => {
       .expect(400);
 
     expect(response.body).toEqual({ error: 'Enter your name to join a room.' });
+  });
+
+  it('rejects oversized names and joins beyond the room capacity', async () => {
+    let nextId = 100;
+    let nextToken = 0;
+    const roomStore = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => String(nextId++),
+      tokenGenerator: () => `token-${nextToken++}`,
+    });
+    roomStore.createRoom('Host');
+    const app = createApp({ roomStore });
+
+    const oversizedResponse = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'S'.repeat(MAX_NAME_LENGTH + 1) })
+      .expect(400);
+    expect(oversizedResponse.body).toEqual({
+      error: `Enter a name with ${MAX_NAME_LENGTH} characters or fewer.`,
+    });
+
+    for (let index = 1; index < MAX_ROOM_PARTICIPANTS; index += 1) {
+      roomStore.joinRoom('ABC123', `Participant ${index}`);
+    }
+    const fullResponse = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'One too many' })
+      .expect(409);
+    expect(fullResponse.body).toEqual({
+      error: `This room is full. It supports up to ${MAX_ROOM_PARTICIPANTS} participants.`,
+    });
   });
 });
 
@@ -221,6 +268,21 @@ describe('POST /api/rooms/:roomCode/story', () => {
       .expect(400);
 
     expect(response.body).toEqual({ error: 'Enter a story to start voting.' });
+  });
+
+  it('rejects an oversized story', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'A'.repeat(MAX_STORY_LENGTH + 1) })
+      .expect(400);
+
+    expect(response.body).toEqual({
+      error: `Enter a story with ${MAX_STORY_LENGTH} characters or fewer.`,
+    });
   });
 });
 

@@ -20,8 +20,8 @@ npm run build
 
 ### Verified automated results
 
-- Server tests: **53 passed**.
-- Client tests: **29 passed**.
+- Server tests: **59 passed**.
+- Client tests: **33 passed**.
 - Client production build: **passed**.
 - Create, join, and restore responses identify the current participant without exposing private tokens in room state.
 - Participant leave removes the active roster entry and active vote, invalidates the old token, and preserves revealed history.
@@ -29,6 +29,11 @@ npm run build
 - While active, the host sees **End room** without a duplicate **Leave room** action; after ending, **Leave room** returns the host home.
 - Invalid leave credentials are rejected.
 - Copy feedback, **You** badges, return-home behavior, and name persistence are covered by React tests.
+- Direct API calls cannot exceed the 60-character name or 500-character story limits.
+- The 100-participant room boundary returns a clear conflict response rather than exhausting identifiers.
+- Blocked `sessionStorage` access does not crash room entry or prevent local cleanup after leaving.
+- Polling waits for the current request to settle before scheduling another request.
+- Copy-success feedback automatically resets after two seconds.
 
 ## Manual browser test procedure
 
@@ -41,7 +46,7 @@ npm run build
 Expected:
 
 - The pasted value exactly matches the room code.
-- The control briefly confirms **Copied!**.
+- The control confirms **Copied!** for two seconds, then returns to **Copy**.
 - If clipboard permission is unavailable, a useful manual-copy message appears.
 
 ### Test B: Identify the current user
@@ -97,6 +102,7 @@ Expected:
 - Leading and trailing spaces are normalized when creating or joining.
 - Leaving clears that tab's saved room session.
 - A room session is not automatically restored in a different tab.
+- If browser session storage is blocked, the current tab remains usable but cannot restore the room after refresh.
 
 ## Exit criteria
 

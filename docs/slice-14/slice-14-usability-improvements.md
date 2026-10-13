@@ -21,6 +21,11 @@ Room entry and exit are easier to understand: users can copy the room code, iden
 - Rejoining after leaving creates a new participant identifier and session.
 - The display name is stored in `localStorage`, so it survives leaving, navigation back to room entry, refresh, and use in another tab on the same browser profile.
 - Room credentials remain in `sessionStorage`; they are not shared across tabs.
+- Names are limited to 60 characters and stories to 500 characters on both the client and server.
+- Rooms support up to 100 participants, including the host; further joins receive a clear room-full response.
+- Browser storage failures do not prevent the current tab from creating, joining, or leaving a room.
+- Polling requests run sequentially, are cancelled during cleanup, and cannot overwrite a newer room action with an older response.
+- Successful copy feedback returns to the normal **Copy** label after two seconds.
 
 ## Areas changed
 
@@ -37,12 +42,13 @@ Room entry and exit are easier to understand: users can copy the room code, iden
 - Display names are convenience data, not credentials or user accounts.
 - No data persists after a server restart, apart from the browser's remembered display name.
 - Leaving an already ended room only returns the local client home; the retained in-memory tombstone is unchanged.
+- If `sessionStorage` is unavailable, the current tab remains usable but cannot restore its room after a refresh.
 
 ## Implementation verification
 
 Automated on 13 October 2026:
 
-- Server tests: **53 passed**.
-- Client tests: **29 passed**.
+- Server tests: **59 passed**.
+- Client tests: **33 passed**.
 - Client production build: **passed**.
 

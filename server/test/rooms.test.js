@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   createRoomStore,
   DECK_PRESETS,
+  MAX_NAME_LENGTH,
+  MAX_ROOM_PARTICIPANTS,
+  MAX_STORY_LENGTH,
   PLANNING_POKER_DECK,
   RoomAuthorizationError,
   RoomNotFoundError,
@@ -37,6 +40,42 @@ describe('room store', () => {
     const store = createRoomStore();
 
     expect(() => store.createRoom('   ')).toThrow(RoomValidationError);
+  });
+
+  it('enforces name limits for hosts and participants', () => {
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'private-token',
+    });
+
+    expect(() => store.createRoom('A'.repeat(MAX_NAME_LENGTH + 1))).toThrow(
+      `Enter a name with ${MAX_NAME_LENGTH} characters or fewer.`,
+    );
+    store.createRoom('Alex');
+    expect(() => store.joinRoom('ABC123', 'S'.repeat(MAX_NAME_LENGTH + 1))).toThrow(
+      RoomValidationError,
+    );
+  });
+
+  it('rejects joins when the room reaches its participant limit', () => {
+    let nextId = 100;
+    let nextToken = 0;
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => String(nextId++),
+      tokenGenerator: () => `token-${nextToken++}`,
+    });
+    store.createRoom('Host');
+
+    for (let index = 1; index < MAX_ROOM_PARTICIPANTS; index += 1) {
+      store.joinRoom('ABC123', `Participant ${index}`);
+    }
+
+    expect(store.getRoom('ABC123').participants).toHaveLength(MAX_ROOM_PARTICIPANTS);
+    expect(() => store.joinRoom('ABC123', 'One too many')).toThrow(
+      `This room is full. It supports up to ${MAX_ROOM_PARTICIPANTS} participants.`,
+    );
   });
 
   it('uses the selected deck preset for voting and rejects unknown presets', () => {
@@ -157,6 +196,29 @@ describe('room store', () => {
     expect(room.status).toBe('voting');
     expect(room.currentStory).toEqual({ text: 'Estimate login flow' });
     expect(lateJoin.room.currentStory).toEqual({ text: 'Estimate login flow' });
+  });
+
+  it('enforces the story length limit for first and subsequent stories', () => {
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'host-token',
+    });
+    store.createRoom('Alex');
+
+    expect(() => store.addStory(
+      'ABC123',
+      'host-token',
+      'A'.repeat(MAX_STORY_LENGTH + 1),
+    )).toThrow(RoomValidationError);
+
+    store.addStory('ABC123', 'host-token', 'First story');
+    store.revealRound('ABC123', 'host-token');
+    expect(() => store.startNextStory(
+      'ABC123',
+      'host-token',
+      'B'.repeat(MAX_STORY_LENGTH + 1),
+    )).toThrow(`Enter a story with ${MAX_STORY_LENGTH} characters or fewer.`);
   });
 
   it('prevents a participant from adding a story', () => {

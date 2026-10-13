@@ -241,6 +241,10 @@ There are no blocking product decisions for the vertical slices. Early-reveal co
 - Every successful leave clears the tab's `sessionStorage` room credentials and returns to room entry.
 - The display name is stored separately in `localStorage` and reused across tabs, refreshes, and room exits.
 - Rejoining after leaving creates a new participant identifier and session.
+- Names are limited to 60 characters, stories to 500 characters, and a room to 100 participants including the host. These limits are enforced by the server as well as the client.
+- Polling is sequential and cancellable so slow requests do not overlap; responses started before a newer room action cannot overwrite that action's state.
+- Browser session-storage failures are non-fatal. The active tab continues to work, but refresh restoration is unavailable when credentials cannot be stored.
+- Successful room-code copy feedback remains visible for two seconds.
 
 ### Consequences
 
@@ -249,4 +253,5 @@ There are no blocking product decisions for the vertical slices. Early-reveal co
 - Name storage is only a convenience and grants no room permissions.
 - Room credentials remain tab-scoped and are never moved into `localStorage`.
 - The active host does not receive a duplicate **Leave room** control; the ended host can still exit the terminal view.
+- A full room rejects further joins with a clear conflict response before the participant identifier space can be exhausted.
 

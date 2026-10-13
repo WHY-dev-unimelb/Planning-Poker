@@ -14,6 +14,7 @@ import {
 } from './api.js';
 
 const POLLING_INTERVAL_MS = 1000;
+const COPY_CONFIRMATION_MS = 2000;
 const SESSION_STORAGE_KEY = 'planning-poker-session';
 const NAME_STORAGE_KEY = 'planning-poker-name';
 const DECK_PRESET_OPTIONS = [
@@ -53,6 +54,8 @@ export default function App() {
   const [copyStatus, setCopyStatus] = useState('');
   const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedSession));
   const previousRoomStatus = useRef(null);
+  const roomMutationVersion = useRef(0);
+  const copyResetTimeout = useRef(null);
 
   useEffect(() => {
     if (!storedSession) {
@@ -113,31 +116,52 @@ export default function App() {
     }
 
     let isActive = true;
-    const intervalId = setInterval(async () => {
+    let timeoutId;
+    let abortController;
+
+    async function pollRoom() {
+      abortController = new AbortController();
+      const mutationVersion = roomMutationVersion.current;
       try {
         const latest = await getRoom(
           roomSession.room.code,
           roomSession.participantToken,
+          { signal: abortController.signal },
         );
-        if (isActive) {
+        if (isActive && mutationVersion === roomMutationVersion.current) {
           setRoomSession((current) => ({ ...current, room: latest.room }));
         }
       } catch (requestError) {
-        if (isActive && (requestError.status === 404 || requestError.status === 403)) {
+        if (
+          isActive
+          && requestError.name !== 'AbortError'
+          && (requestError.status === 404 || requestError.status === 403)
+        ) {
           clearStoredSession();
           setRoomSession(null);
           setViewerRole(null);
           setSelectedVote(null);
           setError('This room is no longer available. Create or join a room.');
         }
+      } finally {
+        if (isActive) {
+          timeoutId = setTimeout(pollRoom, POLLING_INTERVAL_MS);
+        }
       }
-    }, POLLING_INTERVAL_MS);
+    }
+
+    timeoutId = setTimeout(pollRoom, POLLING_INTERVAL_MS);
 
     return () => {
       isActive = false;
-      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+      abortController?.abort();
     };
   }, [roomSession?.room.code, roomSession?.room.status]);
+
+  useEffect(() => () => {
+    clearTimeout(copyResetTimeout.current);
+  }, []);
 
   useEffect(() => {
     const currentStatus = roomSession?.room.status ?? null;
@@ -215,6 +239,7 @@ export default function App() {
 
     setStoryError('');
     setIsStartingStory(true);
+    roomMutationVersion.current += 1;
     try {
       const latest = await addStory(
         roomSession.room.code,
@@ -232,6 +257,7 @@ export default function App() {
   async function handleVote(value) {
     setVoteError('');
     setIsSubmittingVote(true);
+    roomMutationVersion.current += 1;
     try {
       const latest = await submitVote(
         roomSession.room.code,
@@ -250,6 +276,7 @@ export default function App() {
   async function handleReveal() {
     setRevealError('');
     setIsRevealing(true);
+    roomMutationVersion.current += 1;
     try {
       const latest = await revealEstimates(
         roomSession.room.code,
@@ -266,6 +293,7 @@ export default function App() {
   async function handleRevote() {
     setRoundActionError('');
     setIsRestartingVote(true);
+    roomMutationVersion.current += 1;
     try {
       const latest = await startRevote(
         roomSession.room.code,
@@ -290,6 +318,7 @@ export default function App() {
 
     setNextStoryError('');
     setIsStartingNextStory(true);
+    roomMutationVersion.current += 1;
     try {
       const latest = await startNextStory(
         roomSession.room.code,
@@ -313,6 +342,7 @@ export default function App() {
 
     setEndRoomError('');
     setIsEndingRoom(true);
+    roomMutationVersion.current += 1;
     try {
       const latest = await endRoom(
         roomSession.room.code,
@@ -329,15 +359,21 @@ export default function App() {
 
   async function handleCopyRoomCode() {
     setCopyStatus('');
+    clearTimeout(copyResetTimeout.current);
     try {
       await navigator.clipboard.writeText(roomSession.room.code);
       setCopyStatus('Copied');
+      copyResetTimeout.current = setTimeout(() => {
+        setCopyStatus('');
+      }, COPY_CONFIRMATION_MS);
     } catch {
       setCopyStatus('Copy failed. Select the room code and copy it manually.');
     }
   }
 
   function returnHome() {
+    roomMutationVersion.current += 1;
+    clearTimeout(copyResetTimeout.current);
     clearStoredSession();
     setRoomSession(null);
     setViewerRole(null);
@@ -354,6 +390,7 @@ export default function App() {
   async function handleLeaveRoom() {
     setLeaveRoomError('');
     setIsLeavingRoom(true);
+    roomMutationVersion.current += 1;
     try {
       await leaveRoom(roomSession.room.code, roomSession.participantToken);
       returnHome();
@@ -680,14 +717,22 @@ function readStoredSession() {
 }
 
 function saveStoredSession(roomCode, participantToken) {
-  sessionStorage.setItem(
-    SESSION_STORAGE_KEY,
-    JSON.stringify({ roomCode, participantToken }),
-  );
+  try {
+    sessionStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({ roomCode, participantToken }),
+    );
+  } catch {
+    // The active tab still works when browser storage is unavailable.
+  }
 }
 
 function clearStoredSession() {
-  sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  try {
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // Local UI cleanup still proceeds when browser storage is unavailable.
+  }
 }
 
 function readStoredName() {
