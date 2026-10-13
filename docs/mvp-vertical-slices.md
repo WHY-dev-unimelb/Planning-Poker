@@ -1,9 +1,9 @@
 # Planning Poker MVP Vertical Slices
 
-- **Status:** Proposed implementation sequence
+- **Status:** Core product MVP accepted; repository handoff checks remain
 - **Recorded:** 13 October 2026
 - **Architecture:** React client, Express HTTP API, in-memory server state, short-interval polling
-- **Related documents:** [Product decisions](./product-decisions.md) and [MVP user flow](./mvp-user-flow.md)
+- **Related documents:** [Product decisions](./product-decisions.md), [MVP user flow](./mvp-user-flow.md), and [Extended features vertical slices](./planning-poker-extended-features-vertical-slices.md)
 
 ## How to use this plan
 
@@ -220,7 +220,7 @@ After reveal, the host starts a new vote for the same story and all previous vot
 
 ## Slice 7: Host moves to the next story
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -251,7 +251,9 @@ After reveal, the host moves on, enters another story, and begins a clean voting
 - React test: the next story replaces the previous revealed result.
 - Manual check: complete two stories across multiple browser windows.
 
-## Slice 8: Reviewer can run and verify the MVP
+## MVP handoff gate: Reviewer can run and verify the MVP
+
+This is release and assignment hardening rather than another product-behaviour slice. Extension numbering therefore begins at Slice 8 in the separate [extended-features plan](./planning-poker-extended-features-vertical-slices.md).
 
 ### Testable user outcome
 
@@ -286,7 +288,7 @@ A reviewer can follow the repository instructions, start the client and server, 
 
 Use one focused commit per slice. Do not combine a later feature with an earlier slice merely because the same file is open. A slice is complete only when its acceptance checks pass and its focused tests plus the existing regression suite are green.
 
-Suggested commit subjects:
+Completed product-slice commit subjects:
 
 1. `feat: create planning poker rooms`
 2. `feat: join and synchronize room lobby`
@@ -295,9 +297,12 @@ Suggested commit subjects:
 5. `feat: reveal round estimates`
 6. `feat: restart voting for the current story`
 7. `feat: move voting to the next story`
-8. `docs: add MVP setup and verification guidance`
+
+The handoff work should use a separate documentation-focused commit such as `docs: add MVP setup and verification guidance`.
 
 ## Deferred until after the MVP
+
+These items are prioritized and decomposed in the [extended-features vertical slices](./planning-poker-extended-features-vertical-slices.md).
 
 - Additional deck presets and custom decks
 - Complete or persistent round history

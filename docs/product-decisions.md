@@ -1,9 +1,9 @@
 # Planning Poker Product Decision Record
 
-- **Status:** Accepted for MVP planning
+- **Status:** MVP decisions implemented; extension planning started
 - **Recorded:** 13 October 2026
 - **Scope:** Product behaviour and boundaries for the 6–8 hour assignment MVP
-- **Companion document:** [MVP user flow](./mvp-user-flow.md)
+- **Companion documents:** [MVP user flow](./mvp-user-flow.md) and [Extended features vertical slices](./planning-poker-extended-features-vertical-slices.md)
 
 ## 1. Rooms and participant identity
 
