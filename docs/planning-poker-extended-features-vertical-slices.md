@@ -1,6 +1,6 @@
 # Planning Poker Extended Features Vertical Slices
 
-- **Status:** Proposed implementation sequence
+- **Status:** All planned product slices implemented; Slices 8 and 10–13 accepted, Slice 9 cancelled, Slice 14 awaiting manual acceptance
 - **Recorded:** 13 October 2026
 - **Starting point:** Core product MVP Slices 1–7 accepted
 - **Architecture:** React client, Express HTTP API, in-memory server state, short-interval polling
@@ -17,7 +17,8 @@ With approximately two hours remaining, the current sequence is:
 3. Slice 9 is cancelled for the current delivery scope.
 4. Slice 10 is accepted after automated and manual verification.
 5. Slice 11 is accepted after automated and manual verification.
-6. Slices 12 and 13 are implemented; manual browser acceptance remains.
+6. Slices 12 and 13 are accepted after automated and manual verification.
+7. Slice 14 is implemented and automated verification passes; manual acceptance is pending.
 
 Do not begin history, reconnection, or presence work during the assignment unless the earlier work is complete. Those features change room data ownership and lifecycle rules and are more likely to leave the application partially working.
 
@@ -201,7 +202,7 @@ After refreshing or briefly disconnecting, a participant returns to the same ide
 
 ## Slice 12: Host disconnection ends the room
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -241,7 +242,7 @@ When the host is no longer connected, participants receive a clear room-ended me
 
 ## Slice 13: Host explicitly ends a room
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -269,6 +270,40 @@ The host explicitly ends a room and every participant sees that the session has 
 - React confirmation and ended-state tests.
 - Manual multi-client room-ending check.
 
+## Slice 14: Room usability improvements
+
+**Status:** Implemented; automated checks passed, manual checks pending.
+
+### Testable user outcome
+
+Users can copy the room code, identify their own participant row, leave deliberately, return to room entry, and reuse their remembered display name.
+
+### Main files or areas involved
+
+- Room header, participant list, and room-management controls
+- Browser clipboard and name storage
+- Current-participant identity in session responses
+- Leave-room API and in-memory room rules
+- Session cleanup and home return
+
+### Acceptance checks
+
+- A copy control copies the exact room code and gives feedback.
+- **You** and **Host** are distinct badges; a host sees both.
+- Participant leave removes that participant and their active vote immediately.
+- Completed-round history remains unchanged after a participant leaves.
+- Host leave requires confirmation and ends the room immediately.
+- Leaving clears room credentials, returns home, and retains the display name.
+- The display name is shared across tabs through `localStorage`; room credentials remain tab-scoped in `sessionStorage`.
+- Rejoining after leaving creates a new participant identity.
+
+### Tests to run
+
+- Room-store and API tests for participant removal, vote cleanup, history immutability, token invalidation, and host ending.
+- React tests for copy feedback, **You** badges, leave confirmation, home return, and name persistence.
+- Full server and client regression suites and production build.
+- Manual multi-tab checks from the [Slice 14 test plan](./slice-14/slice-14-test-plan.md).
+
 ## Priority and stopping rule
 
 | Priority | Slice | Value | Delivery risk | Recommendation |
@@ -277,8 +312,9 @@ The host explicitly ends a room and every participant sees that the session has 
 | — | 9 — Custom deck | High but validation-heavy | Medium | Cancelled for the current scope |
 | 2 | 10 — Round history | Useful facilitation record | Medium–high | Accepted |
 | 3 | 11 — Session rejoin | Strong reliability benefit | High | Accepted |
-| 4 | 13 — Explicit room end | Moderate lifecycle clarity | Medium | Implemented; complete manual acceptance |
-| 5 | 12 — Host disconnect | Matches the original decision | Very high | Implemented; complete manual acceptance |
+| 4 | 13 — Explicit room end | Moderate lifecycle clarity | Medium | Accepted |
+| 5 | 12 — Host disconnect | Matches the original decision | Very high | Accepted |
+| 6 | 14 — Usability improvements | High day-to-day clarity | Low–medium | Implemented; manual acceptance pending |
 
 Stop adding features when fewer than 30 minutes remain. Reserve that time for the full regression suite, production build, README verification, and a clean multi-client demonstration.
 
@@ -290,3 +326,4 @@ Stop adding features when fewer than 30 minutes remain. Reserve that time for th
 11. `feat: restore participant sessions after refresh`
 12. `feat: end rooms after host disconnection`
 13. `feat: let hosts explicitly end rooms`
+14. `feat: improve room identity and exit usability`
