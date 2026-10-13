@@ -1,7 +1,7 @@
 # Slice 4 Test Plan: Participants Vote Privately
 
 - **Slice:** 4 — Participants vote privately
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [MVP vertical slices](../mvp-vertical-slices.md#slice-4-participants-vote-privately)
 
@@ -165,7 +165,7 @@ Executed on 13 October 2026:
 - Live API pre-reveal privacy check: **passed**; no vote field or token was present.
 - Live API invalid-card check: **passed** with status `400`.
 - Live API invalid-token check: **passed** with status `403`.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed**, confirmed by the user on 13 October 2026.
 
 ## Exit criteria
 

@@ -157,6 +157,28 @@ export function createRoomStore({
     };
   }
 
+  function revealRound(roomCode, participantToken) {
+    const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
+    const room = rooms.get(normalizedCode);
+    if (!room) {
+      throw new RoomNotFoundError('Room not found. Check the code and try again.');
+    }
+
+    const host = room.participants.find(
+      (participant) => participant.token === participantToken && participant.role === 'host',
+    );
+    if (!host) {
+      throw new RoomAuthorizationError('Only the host can reveal estimates.');
+    }
+
+    if (room.status !== 'voting') {
+      throw new RoomStateError('Estimates can only be revealed while voting is active.');
+    }
+
+    room.status = 'revealed';
+    return toPublicRoom(room);
+  }
+
   function toPublicRoom(room) {
     const publicRoom = {
       code: room.code,
@@ -164,6 +186,9 @@ export function createRoomStore({
       participants: room.participants.map(({ token: _token, ...participant }) => ({
         ...participant,
         ...(room.status === 'voting' ? { hasVoted: room.votes.has(participant.id) } : {}),
+        ...(room.status === 'revealed'
+          ? { vote: room.votes.get(participant.id) ?? null }
+          : {}),
       })),
     };
     if (room.currentStory) {
@@ -178,6 +203,7 @@ export function createRoomStore({
     joinRoom,
     addStory,
     submitVote,
+    revealRound,
     getRoom(code) {
       const normalizedCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
       const room = rooms.get(normalizedCode);

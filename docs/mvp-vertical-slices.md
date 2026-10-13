@@ -119,7 +119,7 @@ The host adds a story from the lobby, and every participant sees that story ente
 
 ## Slice 4: Participants vote privately
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -153,6 +153,8 @@ Participants select or change a card while everyone can see who has voted withou
 - Manual check: vote in one window and inspect both the visible interface and raw room-state response in another.
 
 ## Slice 5: Host reveals estimates
+
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 

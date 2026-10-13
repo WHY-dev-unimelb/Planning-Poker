@@ -211,3 +211,69 @@ describe('PUT /api/rooms/:roomCode/vote', () => {
   });
 });
 
+describe('POST /api/rooms/:roomCode/reveal', () => {
+  async function prepareRoom(app) {
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate login flow' })
+      .expect(201);
+    return join.body.participantToken;
+  }
+
+  it('lets the host reveal before everyone votes and exposes explicit results', async () => {
+    const app = createTestApplication();
+    const participantToken = await prepareRoom(app);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${participantToken}`)
+      .send({ value: '8' })
+      .expect(200);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/reveal')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+
+    expect(response.body.room.status).toBe('revealed');
+    expect(response.body.room.participants).toEqual([
+      expect.objectContaining({ label: 'Alex #123', vote: null }),
+      expect.objectContaining({ label: 'Sam #456', vote: '8' }),
+    ]);
+  });
+
+  it('forbids participants from revealing', async () => {
+    const app = createTestApplication();
+    const participantToken = await prepareRoom(app);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/reveal')
+      .set('Authorization', `Bearer ${participantToken}`)
+      .expect(403);
+
+    expect(response.body).toEqual({ error: 'Only the host can reveal estimates.' });
+  });
+
+  it('rejects voting after reveal', async () => {
+    const app = createTestApplication();
+    const participantToken = await prepareRoom(app);
+    await request(app)
+      .post('/api/rooms/ABC123/reveal')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+
+    const response = await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${participantToken}`)
+      .send({ value: '13' })
+      .expect(409);
+
+    expect(response.body).toEqual({ error: 'Voting is not active.' });
+  });
+});
+

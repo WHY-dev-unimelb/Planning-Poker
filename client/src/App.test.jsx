@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.jsx';
 
@@ -314,5 +314,80 @@ describe('private voting', () => {
     expect(await screen.findByText('Voted', {}, { timeout: 2500 })).toBeVisible();
     expect(screen.getByText('Not voted')).toBeVisible();
     expect(screen.queryByText('Alex voted 13')).not.toBeInTheDocument();
+  });
+});
+
+describe('revealing estimates', () => {
+  const votingParticipants = [
+    { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+    { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant', hasVoted: true },
+  ];
+
+  function activeVotingSession() {
+    return roomSession(votingParticipants, {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    });
+  }
+
+  function revealedRoom() {
+    return roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', vote: null },
+      { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant', vote: '8' },
+    ], {
+      status: 'revealed',
+      currentStory: { text: 'Estimate login flow' },
+      deck: ['1', '2', '3', '5', '8', '13', '21', '?'],
+    }).room;
+  }
+
+  it('lets the host reveal early and displays votes and non-voters', async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: activeVotingSession().room }))
+      .mockResolvedValueOnce(successfulResponse({ room: revealedRoom() }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.type(await screen.findByLabelText('Story'), 'Estimate login flow');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+    await user.click(await screen.findByRole('button', { name: 'Reveal estimates' }));
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      3,
+      '/api/rooms/ABC123/reveal',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer private-token' }),
+      }),
+    );
+    expect(await screen.findByRole('heading', { name: 'Estimates revealed' })).toBeVisible();
+
+    const results = screen.getByRole('heading', { name: 'Estimates' }).parentElement;
+    expect(within(within(results).getByText('Alex #123').closest('li')).getByText('No vote')).toBeVisible();
+    expect(within(within(results).getByText('Sam #456').closest('li')).getByText('8')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '8' })).not.toBeInTheDocument();
+  });
+
+  it('shows a participant the revealed results after polling without reveal controls', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(activeVotingSession()))
+      .mockResolvedValue(successfulResponse({ room: revealedRoom() }));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+
+    expect(await screen.findByRole('heading', { name: 'Estimate login flow' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Reveal estimates' })).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Estimates revealed' }, { timeout: 2500 }),
+    ).toBeVisible();
+    expect(screen.getByText('No vote')).toBeVisible();
   });
 });

@@ -166,5 +166,45 @@ describe('room store', () => {
       RoomAuthorizationError,
     );
   });
+
+  it('lets the host reveal early and freezes the round', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+    store.submitVote('ABC123', 'participant-token', '8');
+
+    const room = store.revealRound('ABC123', 'host-token');
+
+    expect(room.status).toBe('revealed');
+    expect(room.participants).toEqual([
+      expect.objectContaining({ label: 'Alex #123', vote: null }),
+      expect.objectContaining({ label: 'Sam #456', vote: '8' }),
+    ]);
+    expect(() => store.submitVote('ABC123', 'participant-token', '13')).toThrow(RoomStateError);
+  });
+
+  it('prevents a participant from revealing estimates', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+
+    expect(() => store.revealRound('ABC123', 'participant-token')).toThrow(
+      RoomAuthorizationError,
+    );
+  });
 });
 

@@ -60,3 +60,14 @@ export async function submitVote(roomCode, participantToken, value) {
   );
 }
 
+export async function revealEstimates(roomCode, participantToken) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/reveal`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${participantToken}`,
+      },
+    }),
+  );
+}
+

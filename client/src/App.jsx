@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { addStory, createRoom, getRoom, joinRoom, submitVote } from './api.js';
+import {
+  addStory,
+  createRoom,
+  getRoom,
+  joinRoom,
+  revealEstimates,
+  submitVote,
+} from './api.js';
 
 const POLLING_INTERVAL_MS = 1000;
 
@@ -19,6 +26,8 @@ export default function App() {
   const [selectedVote, setSelectedVote] = useState(null);
   const [voteError, setVoteError] = useState('');
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
+  const [revealError, setRevealError] = useState('');
+  const [isRevealing, setIsRevealing] = useState(false);
 
   useEffect(() => {
     if (!roomSession) {
@@ -133,13 +142,38 @@ export default function App() {
     }
   }
 
+  async function handleReveal() {
+    setRevealError('');
+    setIsRevealing(true);
+    try {
+      const latest = await revealEstimates(
+        roomSession.room.code,
+        roomSession.participantToken,
+      );
+      setRoomSession((current) => ({ ...current, room: latest.room }));
+    } catch (requestError) {
+      setRevealError(requestError.message);
+    } finally {
+      setIsRevealing(false);
+    }
+  }
+
   if (roomSession) {
     const isVoting = roomSession.room.status === 'voting';
+    const isRevealed = roomSession.room.status === 'revealed';
     return (
       <main className="page-shell">
         <section className="panel" aria-labelledby="room-heading">
-          <p className="eyebrow">{isVoting ? 'Voting' : entryMessage}</p>
-          <h1 id="room-heading">{isVoting ? 'Voting has started' : 'Planning Poker lobby'}</h1>
+          <p className="eyebrow">
+            {isVoting ? 'Voting' : isRevealed ? 'Round revealed' : entryMessage}
+          </p>
+          <h1 id="room-heading">
+            {isVoting
+              ? 'Voting has started'
+              : isRevealed
+                ? 'Estimates revealed'
+                : 'Planning Poker lobby'}
+          </h1>
           <p className="room-code-label">Room code</p>
           <p className="room-code" aria-label={`Room code ${roomSession.room.code}`}>
             {roomSession.room.code}
@@ -173,6 +207,32 @@ export default function App() {
                 </p>
               )}
               <FormMessage error={voteError} />
+              {viewerRole === 'host' && (
+                <div className="reveal-actions">
+                  <button type="button" onClick={handleReveal} disabled={isRevealing}>
+                    {isRevealing ? 'Revealing…' : 'Reveal estimates'}
+                  </button>
+                  <FormMessage error={revealError} />
+                </div>
+              )}
+            </>
+          ) : isRevealed ? (
+            <>
+              <div className="story-section">
+                <p className="section-label">Current story</p>
+                <h2>{roomSession.room.currentStory.text}</h2>
+              </div>
+              <div className="results-section">
+                <h2>Estimates</h2>
+                <ul className="results-list">
+                  {roomSession.room.participants.map((participant) => (
+                    <li key={participant.id}>
+                      <span>{participant.label}</span>
+                      <strong>{participant.vote ?? 'No vote'}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </>
           ) : viewerRole === 'host' ? (
             <form className="story-form" onSubmit={handleAddStory} noValidate>

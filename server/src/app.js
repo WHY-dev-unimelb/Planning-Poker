@@ -118,6 +118,31 @@ export function createApp({ roomStore = createRoomStore() } = {}) {
     }
   });
 
+  app.post('/api/rooms/:roomCode/reveal', (request, response) => {
+    try {
+      const room = roomStore.revealRound(
+        request.params.roomCode,
+        getBearerToken(request),
+      );
+      response.json({ room });
+    } catch (error) {
+      if (error instanceof RoomNotFoundError) {
+        response.status(404).json({ error: error.message });
+        return;
+      }
+      if (error instanceof RoomAuthorizationError) {
+        response.status(403).json({ error: error.message });
+        return;
+      }
+      if (error instanceof RoomStateError) {
+        response.status(409).json({ error: error.message });
+        return;
+      }
+
+      response.status(500).json({ error: 'Unable to reveal estimates.' });
+    }
+  });
+
   return app;
 }
 

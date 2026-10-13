@@ -213,6 +213,34 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.reveal-actions {
+  display: grid;
+  margin-bottom: 24px;
+}
+
+.results-section {
+  margin-bottom: 24px;
+}
+
+.results-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.results-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #e3e8f1;
+}
+
+.results-list strong {
+  min-width: 64px;
+  text-align: right;
+}
+
 .story-section h2 {
   margin-bottom: 8px;
 }
