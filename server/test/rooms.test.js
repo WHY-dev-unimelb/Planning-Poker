@@ -318,5 +318,57 @@ describe('room store', () => {
       RoomValidationError,
     );
   });
+
+  it('keeps immutable revealed history across revotes, stories, and late joins', () => {
+    const ids = ['123', '456', '789'];
+    const tokens = ['host-token', 'participant-token', 'late-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'First story');
+    store.submitVote('ABC123', 'host-token', '5');
+    store.submitVote('ABC123', 'participant-token', '8');
+
+    const firstReveal = store.revealRound('ABC123', 'host-token');
+    expect(firstReveal.history[0]).toEqual({
+      storyNumber: 1,
+      roundNumber: 1,
+      story: { text: 'First story' },
+      participants: [
+        { id: '123', label: 'Alex #123', role: 'host', vote: '5' },
+        { id: '456', label: 'Sam #456', role: 'participant', vote: '8' },
+      ],
+    });
+
+    store.restartVoting('ABC123', 'host-token');
+    store.submitVote('ABC123', 'host-token', '13');
+    const secondReveal = store.revealRound('ABC123', 'host-token');
+    expect(secondReveal.history[1]).toEqual(
+      expect.objectContaining({ storyNumber: 1, roundNumber: 2 }),
+    );
+    expect(secondReveal.history[0].participants[0].vote).toBe('5');
+
+    store.startNextStory('ABC123', 'host-token', 'Second story');
+    const lateJoin = store.joinRoom('ABC123', 'Taylor');
+    expect(lateJoin.room.history).toHaveLength(2);
+    store.submitVote('ABC123', 'late-token', '3');
+    const thirdReveal = store.revealRound('ABC123', 'host-token');
+
+    expect(thirdReveal.history[2]).toEqual(
+      expect.objectContaining({
+        storyNumber: 2,
+        roundNumber: 1,
+        story: { text: 'Second story' },
+      }),
+    );
+    expect(thirdReveal.history[2].participants).toContainEqual(
+      expect.objectContaining({ label: 'Taylor #789', vote: '3' }),
+    );
+    expect(JSON.stringify(thirdReveal.history)).not.toContain('token');
+  });
 });
 

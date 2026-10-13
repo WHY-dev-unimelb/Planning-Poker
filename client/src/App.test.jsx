@@ -557,3 +557,73 @@ describe('starting the next story', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 });
+
+describe('completed round history', () => {
+  it('shows earlier revealed rounds to a participant who joins later', async () => {
+    const user = userEvent.setup();
+    const sessionWithHistory = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+      { id: '789', name: 'Taylor', label: 'Taylor #789', role: 'participant', hasVoted: false },
+    ], {
+      status: 'voting',
+      currentStory: { text: 'Second story' },
+      history: [
+        {
+          storyNumber: 1,
+          roundNumber: 1,
+          story: { text: 'First story' },
+          participants: [
+            { id: '123', label: 'Alex #123', role: 'host', vote: '5' },
+            { id: '456', label: 'Sam #456', role: 'participant', vote: '8' },
+          ],
+        },
+      ],
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse(sessionWithHistory));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Taylor');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+
+    const history = await screen.findByRole('heading', { name: 'Round history' });
+    const historySection = history.closest('section');
+    expect(within(historySection).getByText('Story 1, round 1')).toBeVisible();
+    expect(within(historySection).getByRole('heading', { name: 'First story' })).toBeVisible();
+    expect(within(historySection).getByText('Sam #456')).toBeVisible();
+    expect(within(historySection).getByText('8')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Second story' })).toBeVisible();
+  });
+
+  it('does not duplicate the current revealed round in history', async () => {
+    const user = userEvent.setup();
+    const revealedWithHistory = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', vote: '5' },
+    ], {
+      status: 'revealed',
+      currentStory: { text: 'First story' },
+      deck: ['1', '2', '3', '5', '8', '13', '21', '?'],
+      history: [
+        {
+          storyNumber: 1,
+          roundNumber: 1,
+          story: { text: 'First story' },
+          participants: [
+            { id: '123', label: 'Alex #123', role: 'host', vote: '5' },
+          ],
+        },
+      ],
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse(revealedWithHistory));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+
+    expect(await screen.findByRole('heading', { name: 'Estimates revealed' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Round history' })).not.toBeInTheDocument();
+  });
+});

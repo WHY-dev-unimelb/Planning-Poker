@@ -157,3 +157,22 @@ There are no blocking product decisions for the vertical slices. Early-reveal co
 - The selected deck cannot change after room creation.
 - Hidden-vote and reveal behavior remain identical for every preset.
 
+## 10. In-memory completed-round history
+
+### Decision
+
+- Every successful reveal appends an immutable round snapshot to the room history.
+- A snapshot records the story number, round number, story text, participant labels and roles, and each revealed estimate or no-vote result.
+- Revoting creates another numbered round for the same story.
+- Moving to the next story retains all earlier snapshots and starts round one for the new story.
+- Participants who join later can see all earlier revealed rounds.
+- The current revealed result remains in the main results view; the history section displays earlier rounds to avoid duplication.
+
+### Consequences
+
+- History is shared room data rather than private per-participant data.
+- Snapshot participants do not change when participants later join or submit another vote.
+- Private participant tokens are never copied into history.
+- History remains in memory only and disappears when the server restarts.
+- An invalid repeated reveal cannot append a duplicate snapshot.
+

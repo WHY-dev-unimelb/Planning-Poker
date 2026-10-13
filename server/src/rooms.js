@@ -83,6 +83,8 @@ export function createRoomStore({
       code,
       status: 'lobby',
       deckPreset,
+      history: [],
+      currentStoryNumber: 0,
       participants: [host],
     };
     rooms.set(code, room);
@@ -134,6 +136,7 @@ export function createRoomStore({
     }
 
     room.currentStory = { text: normalizedStory };
+    room.currentStoryNumber = 1;
     room.votes = new Map();
     room.status = 'voting';
     return toPublicRoom(room);
@@ -184,6 +187,20 @@ export function createRoomStore({
       throw new RoomStateError('Estimates can only be revealed while voting is active.');
     }
 
+    const roundNumber = room.history.filter(
+      (round) => round.storyNumber === room.currentStoryNumber,
+    ).length + 1;
+    room.history.push({
+      storyNumber: room.currentStoryNumber,
+      roundNumber,
+      story: { ...room.currentStory },
+      participants: room.participants.map(({ id, label, role }) => ({
+        id,
+        label,
+        role,
+        vote: room.votes.get(id) ?? null,
+      })),
+    });
     room.status = 'revealed';
     return toPublicRoom(room);
   }
@@ -235,6 +252,7 @@ export function createRoomStore({
     }
 
     room.currentStory = { text: normalizedStory };
+    room.currentStoryNumber += 1;
     room.votes = new Map();
     room.status = 'voting';
     return toPublicRoom(room);
@@ -255,6 +273,14 @@ export function createRoomStore({
     if (room.currentStory) {
       publicRoom.currentStory = { ...room.currentStory };
       publicRoom.deck = [...DECK_PRESETS[room.deckPreset]];
+    }
+    if (room.history.length > 0) {
+      publicRoom.history = room.history.map((round) => ({
+        storyNumber: round.storyNumber,
+        roundNumber: round.roundNumber,
+        story: { ...round.story },
+        participants: round.participants.map((participant) => ({ ...participant })),
+      }));
     }
     return publicRoom;
   }

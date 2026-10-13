@@ -1,7 +1,7 @@
 # Slice 8 Test Plan: Host Chooses a Preset Deck
 
 - **Slice:** 8 — Host chooses a preset deck
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [Extended features vertical slices](../planning-poker-extended-features-vertical-slices.md#slice-8-host-chooses-a-preset-deck)
 
@@ -21,7 +21,7 @@ This plan covers:
 - Dynamic React card rendering
 - Existing hidden-vote privacy behavior
 
-Custom deck entry remains outside Slice 8 and begins in Slice 9.
+Custom deck entry remains outside Slice 8. Slice 9 was later cancelled for the current delivery scope.
 
 ## Preset definitions
 
@@ -148,7 +148,7 @@ Executed on 13 October 2026:
 - Server preset selection, unknown-preset validation, and room-specific vote validation: **passed**.
 - Client preset submission and dynamic card rendering: **passed**.
 - Existing hidden-vote privacy regression tests: **passed**.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed; confirmed by the user on 13 October 2026**.
 
 ## Exit criteria
 

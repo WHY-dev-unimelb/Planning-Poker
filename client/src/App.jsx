@@ -223,6 +223,8 @@ export default function App() {
   if (roomSession) {
     const isVoting = roomSession.room.status === 'voting';
     const isRevealed = roomSession.room.status === 'revealed';
+    const history = roomSession.room.history ?? [];
+    const previousRounds = isRevealed ? history.slice(0, -1) : history;
     return (
       <main className="page-shell">
         <section className="panel" aria-labelledby="room-heading">
@@ -339,6 +341,8 @@ export default function App() {
             <p className="waiting-message">Waiting for the host to add the first story.</p>
           )}
 
+          <RoundHistory rounds={previousRounds} />
+
           <div className="lobby-section">
             <h2>Participants</h2>
             <ul className="participant-list">
@@ -450,6 +454,36 @@ export default function App() {
         )}
       </section>
     </main>
+  );
+}
+
+function RoundHistory({ rounds }) {
+  if (rounds.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="history-section" aria-labelledby="round-history-heading">
+      <h2 id="round-history-heading">Round history</h2>
+      <ol className="history-list">
+        {rounds.map((round) => (
+          <li key={`${round.storyNumber}-${round.roundNumber}`} className="history-round">
+            <p className="history-round-label">
+              Story {round.storyNumber}, round {round.roundNumber}
+            </p>
+            <h3>{round.story.text}</h3>
+            <ul className="history-results">
+              {round.participants.map((participant) => (
+                <li key={participant.id}>
+                  <span>{participant.label}</span>
+                  <strong>{participant.vote ?? 'No vote'}</strong>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

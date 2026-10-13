@@ -456,3 +456,46 @@ describe('POST /api/rooms/:roomCode/next-story', () => {
   });
 });
 
+describe('completed round history', () => {
+  it('shares revealed history with participants who join later without exposing tokens', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const firstJoin = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate login flow' })
+      .expect(201);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${firstJoin.body.participantToken}`)
+      .send({ value: '8' })
+      .expect(200);
+    await request(app)
+      .post('/api/rooms/ABC123/reveal')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+
+    const lateJoin = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Taylor' })
+      .expect(201);
+
+    expect(lateJoin.body.room.history).toEqual([
+      {
+        storyNumber: 1,
+        roundNumber: 1,
+        story: { text: 'Estimate login flow' },
+        participants: [
+          { id: '123', label: 'Alex #123', role: 'host', vote: null },
+          { id: '456', label: 'Sam #456', role: 'participant', vote: '8' },
+        ],
+      },
+    ]);
+    expect(JSON.stringify(lateJoin.body.room.history)).not.toContain('token');
+  });
+});
+
