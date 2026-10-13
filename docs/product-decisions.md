@@ -3,6 +3,7 @@
 - **Status:** Accepted for MVP planning
 - **Recorded:** 13 October 2026
 - **Scope:** Product behaviour and boundaries for the 6–8 hour assignment MVP
+- **Companion document:** [MVP user flow](./mvp-user-flow.md)
 
 ## 1. Rooms and participant identity
 
@@ -106,6 +107,24 @@
 - Restarting the server ends every room and deletes all history.
 - The interface and README should make this limitation clear.
 
+## 8. Primary session flow
+
+### Decision
+
+- The MVP uses a lobby-first, facilitator-led flow.
+- The host creates and configures the room before adding the first story.
+- Participants join the lobby before estimation begins.
+- The host adds the first story when the group is ready, which begins the first voting round.
+- After reveal, the host chooses either **Revote** for the current story or **Next story**.
+
+### Consequences
+
+- The product needs a distinct lobby state before the first story is active.
+- Participants can confirm that they joined the correct room and see who else is present before voting starts.
+- The host has a clear opportunity to select a preset or custom deck before the first round.
+- There is no separate ready-check or “open voting” action in the MVP. Adding a story begins voting.
+- The complete flow is documented in [MVP user flow](./mvp-user-flow.md).
+
 ## Explicitly out of scope for the MVP
 
 - User accounts and authentication
@@ -125,4 +144,5 @@ These do not change the decisions above, but need a precise implementation rule:
 4. Should a returning participant recover an unrevealed vote?
 5. Should early reveal require confirmation when one or more participants have not voted?
 6. How should complete round history be presented: inline below the active round or on a separate view?
+7. Can participants join after the first round has started, and if so, when may they first vote?
 
