@@ -195,3 +195,37 @@ There are no blocking product decisions for the vertical slices. Early-reveal co
 - Reopening the application in a new tab requires joining again and creates a new participant identity.
 - Server restart still deletes the room and makes the stored session invalid.
 
+## 12. Host-disconnection room ending
+
+### Decision
+
+- Every room has a 15-second host activity lease.
+- Authenticated host polling, host restoration, and host actions renew the lease.
+- If the lease has expired when the room is next requested, the room transitions to `ended` with a host-disconnected reason.
+- A same-tab host refresh within the grace period restores the session and renews the lease.
+- Participant activity does not renew the host lease.
+
+### Consequences
+
+- Participant polling normally detects disconnection shortly after the 15-second grace period.
+- Brief refreshes or network interruptions within the grace period do not end the room.
+- Background browser throttling may affect a short demonstration lease, so a production system would use a longer duration or a realtime connection.
+- No background server timers are required; expiry is evaluated lazily on room access.
+
+## 13. Explicit and retained room ending
+
+### Decision
+
+- Only the host can explicitly end an active room.
+- The client asks for confirmation before sending the end request.
+- Ending is idempotent.
+- Ended rooms remain as in-memory tombstones until server restart.
+- The tombstone includes a clear reason and message for participant polling.
+
+### Consequences
+
+- Ended rooms reject joins, votes, and round actions.
+- All connected clients reach the same terminal room view through polling.
+- History and the participant roster remain readable in the ended state.
+- Restarting the server removes ended tombstones with every other in-memory room.
+

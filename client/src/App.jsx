@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   addStory,
   createRoom,
+  endRoom,
   getRoom,
   joinRoom,
   revealEstimates,
@@ -44,6 +45,8 @@ export default function App() {
   const [nextStoryText, setNextStoryText] = useState('');
   const [nextStoryError, setNextStoryError] = useState('');
   const [isStartingNextStory, setIsStartingNextStory] = useState(false);
+  const [endRoomError, setEndRoomError] = useState('');
+  const [isEndingRoom, setIsEndingRoom] = useState(false);
   const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedSession));
   const previousRoomStatus = useRef(null);
 
@@ -86,14 +89,17 @@ export default function App() {
   }, [storedSession]);
 
   useEffect(() => {
-    if (!roomSession) {
+    if (!roomSession || roomSession.room.status === 'ended') {
       return undefined;
     }
 
     let isActive = true;
     const intervalId = setInterval(async () => {
       try {
-        const latest = await getRoom(roomSession.room.code);
+        const latest = await getRoom(
+          roomSession.room.code,
+          roomSession.participantToken,
+        );
         if (isActive) {
           setRoomSession((current) => ({ ...current, room: latest.room }));
         }
@@ -112,7 +118,7 @@ export default function App() {
       isActive = false;
       clearInterval(intervalId);
     };
-  }, [roomSession?.room.code]);
+  }, [roomSession?.room.code, roomSession?.room.status]);
 
   useEffect(() => {
     const currentStatus = roomSession?.room.status ?? null;
@@ -272,6 +278,27 @@ export default function App() {
     }
   }
 
+  async function handleEndRoom() {
+    if (!window.confirm('End this room for everyone?')) {
+      return;
+    }
+
+    setEndRoomError('');
+    setIsEndingRoom(true);
+    try {
+      const latest = await endRoom(
+        roomSession.room.code,
+        roomSession.participantToken,
+      );
+      setSelectedVote(null);
+      setRoomSession((current) => ({ ...current, room: latest.room }));
+    } catch (requestError) {
+      setEndRoomError(requestError.message);
+    } finally {
+      setIsEndingRoom(false);
+    }
+  }
+
   if (isRestoringSession) {
     return (
       <main className="page-shell">
@@ -286,27 +313,38 @@ export default function App() {
   if (roomSession) {
     const isVoting = roomSession.room.status === 'voting';
     const isRevealed = roomSession.room.status === 'revealed';
+    const isEnded = roomSession.room.status === 'ended';
     const history = roomSession.room.history ?? [];
     const previousRounds = isRevealed ? history.slice(0, -1) : history;
     return (
       <main className="page-shell">
         <section className="panel" aria-labelledby="room-heading">
           <p className="eyebrow">
-            {isVoting ? 'Voting' : isRevealed ? 'Round revealed' : entryMessage}
+            {isEnded
+              ? 'Session ended'
+              : isVoting
+                ? 'Voting'
+                : isRevealed
+                  ? 'Round revealed'
+                  : entryMessage}
           </p>
           <h1 id="room-heading">
-            {isVoting
-              ? 'Voting has started'
-              : isRevealed
-                ? 'Estimates revealed'
-                : 'Planning Poker lobby'}
+            {isEnded
+              ? 'Room ended'
+              : isVoting
+                ? 'Voting has started'
+                : isRevealed
+                  ? 'Estimates revealed'
+                  : 'Planning Poker lobby'}
           </h1>
           <p className="room-code-label">Room code</p>
           <p className="room-code" aria-label={`Room code ${roomSession.room.code}`}>
             {roomSession.room.code}
           </p>
 
-          {isVoting ? (
+          {isEnded ? (
+            <p className="ended-message">{roomSession.room.endedMessage}</p>
+          ) : isVoting ? (
             <>
               <div className="story-section">
                 <p className="section-label">Current story</p>
@@ -424,6 +462,20 @@ export default function App() {
               ))}
             </ul>
           </div>
+
+          {viewerRole === 'host' && !isEnded && (
+            <div className="room-management">
+              <button
+                type="button"
+                className="danger-button"
+                onClick={handleEndRoom}
+                disabled={isEndingRoom}
+              >
+                {isEndingRoom ? 'Ending room…' : 'End room'}
+              </button>
+              <FormMessage error={endRoomError} />
+            </div>
+          )}
         </section>
       </main>
     );

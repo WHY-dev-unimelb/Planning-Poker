@@ -16,7 +16,8 @@ With approximately two hours remaining, the current sequence is:
 2. Slice 8 is accepted after automated and manual verification.
 3. Slice 9 is cancelled for the current delivery scope.
 4. Slice 10 is accepted after automated and manual verification.
-5. Slice 11 is implemented; manual browser acceptance remains.
+5. Slice 11 is accepted after automated and manual verification.
+6. Slices 12 and 13 are implemented; manual browser acceptance remains.
 
 Do not begin history, reconnection, or presence work during the assignment unless the earlier work is complete. Those features change room data ownership and lifecycle rules and are more likely to leave the application partially working.
 
@@ -164,7 +165,7 @@ Participants can review every revealed round for the current in-memory room, inc
 
 ## Slice 11: Participant rejoins the same browser session
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -200,7 +201,7 @@ After refreshing or briefly disconnecting, a participant returns to the same ide
 
 ## Slice 12: Host disconnection ends the room
 
-**Status:** Planned; high risk with HTTP polling.
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 
@@ -230,14 +231,17 @@ When the host is no longer connected, participants receive a clear room-ended me
 - React room-ended state test.
 - Multi-client manual disconnect and timeout check.
 
-### Open decisions before implementation
+### Selected behavior
 
-- Grace period length; recommended 10–15 seconds for a demonstration, longer in a real product.
-- Whether refresh within the grace period restores the host; this depends on Slice 11 session restoration.
+- The host lease expires after 15 seconds without authenticated host activity.
+- Authenticated host polling and host actions renew the lease.
+- Same-tab host restoration within the grace period renews the lease and keeps the room active.
+- Expiry is evaluated when the room is next requested, which fits the existing polling architecture without background timer cleanup.
+- An ended tombstone remains in memory until server restart.
 
 ## Slice 13: Host explicitly ends a room
 
-**Status:** Planned after session restoration and lifecycle rules are settled.
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 
@@ -272,9 +276,9 @@ The host explicitly ends a room and every participant sees that the session has 
 | 1 | 8 — Preset decks | High and visible | Low–medium | Accepted |
 | — | 9 — Custom deck | High but validation-heavy | Medium | Cancelled for the current scope |
 | 2 | 10 — Round history | Useful facilitation record | Medium–high | Accepted |
-| 3 | 11 — Session rejoin | Strong reliability benefit | High | Implemented; complete manual acceptance |
-| 5 | 13 — Explicit room end | Moderate lifecycle clarity | Medium | Defer until room lifecycle is designed |
-| 6 | 12 — Host disconnect | Matches the original decision | Very high | Defer; polling makes this timing-sensitive |
+| 3 | 11 — Session rejoin | Strong reliability benefit | High | Accepted |
+| 4 | 13 — Explicit room end | Moderate lifecycle clarity | Medium | Implemented; complete manual acceptance |
+| 5 | 12 — Host disconnect | Matches the original decision | Very high | Implemented; complete manual acceptance |
 
 Stop adding features when fewer than 30 minutes remain. Reserve that time for the full regression suite, production build, README verification, and a clean multi-client demonstration.
 

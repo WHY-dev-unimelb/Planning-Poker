@@ -1,7 +1,7 @@
 # Slice 11 Test Plan: Participant Restores the Same-Tab Session
 
 - **Slice:** 11 — Participant rejoins the same browser session
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [Extended features vertical slices](../planning-poker-extended-features-vertical-slices.md#slice-11-participant-rejoins-the-same-browser-session)
 
@@ -158,7 +158,7 @@ Executed on 13 October 2026:
 - Invalid-token and missing-room API checks: **passed**.
 - Client same-tab restoration and stale-session cleanup checks: **passed**.
 - Existing pre-reveal privacy regression tests: **passed**.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed; confirmed by the user on 13 October 2026**.
 
 ## Exit criteria
 

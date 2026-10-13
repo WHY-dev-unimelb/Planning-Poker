@@ -549,3 +549,72 @@ describe('completed round history', () => {
   });
 });
 
+describe('room lifecycle', () => {
+  it('returns an ended tombstone after the host lease expires', async () => {
+    let currentTime = 0;
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const roomStore = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+      now: () => currentTime,
+      hostDisconnectGraceMs: 15_000,
+    });
+    const app = createApp({ roomStore });
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+
+    currentTime = 15_000;
+    const response = await request(app)
+      .get('/api/rooms/ABC123')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .expect(200);
+
+    expect(response.body.room).toEqual(expect.objectContaining({
+      status: 'ended',
+      endedReason: 'host-disconnected',
+    }));
+    await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Taylor' })
+      .expect(409);
+  });
+
+  it('lets only the host explicitly end the room and is idempotent', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+
+    await request(app)
+      .post('/api/rooms/ABC123/end')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .expect(403);
+    const ended = await request(app)
+      .post('/api/rooms/ABC123/end')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+
+    expect(ended.body.room).toEqual(expect.objectContaining({
+      status: 'ended',
+      endedReason: 'host-ended',
+      endedMessage: 'The host ended this room.',
+    }));
+    await request(app)
+      .post('/api/rooms/ABC123/end')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .send({ value: '5' })
+      .expect(409);
+  });
+});
+

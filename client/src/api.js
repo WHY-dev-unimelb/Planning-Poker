@@ -32,8 +32,14 @@ export async function joinRoom(roomCode, participantName) {
   );
 }
 
-export async function getRoom(roomCode) {
-  return readResponse(await fetch(`/api/rooms/${encodeURIComponent(roomCode)}`));
+export async function getRoom(roomCode, participantToken) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}`, {
+      headers: {
+        Authorization: `Bearer ${participantToken}`,
+      },
+    }),
+  );
 }
 
 export async function restoreSession(roomCode, participantToken) {
@@ -103,6 +109,17 @@ export async function startNextStory(roomCode, participantToken, storyText) {
         Authorization: `Bearer ${participantToken}`,
       },
       body: JSON.stringify({ storyText }),
+    }),
+  );
+}
+
+export async function endRoom(roomCode, participantToken) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/end`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${participantToken}`,
+      },
     }),
   );
 }

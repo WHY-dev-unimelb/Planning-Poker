@@ -404,5 +404,80 @@ describe('room store', () => {
     );
     expect(JSON.stringify(thirdReveal.history)).not.toContain('token');
   });
+
+  it('ends the room after a 15-second host lease expires but renews within the grace period', () => {
+    let currentTime = 0;
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+      now: () => currentTime,
+      hostDisconnectGraceMs: 15_000,
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+
+    currentTime = 14_000;
+    expect(store.getRoom('ABC123', 'host-token').status).toBe('lobby');
+    currentTime = 28_000;
+    expect(store.getRoom('ABC123', 'participant-token').status).toBe('lobby');
+    currentTime = 29_001;
+
+    const endedRoom = store.getRoom('ABC123', 'participant-token');
+    expect(endedRoom).toEqual(expect.objectContaining({
+      status: 'ended',
+      endedReason: 'host-disconnected',
+      endedMessage: 'The room ended because the host disconnected.',
+    }));
+    expect(() => store.joinRoom('ABC123', 'Taylor')).toThrow(RoomStateError);
+    expect(() => store.addStory('ABC123', 'host-token', 'Too late')).toThrow(RoomStateError);
+  });
+
+  it('restoring the host within the grace period renews the lease', () => {
+    let currentTime = 0;
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'host-token',
+      now: () => currentTime,
+      hostDisconnectGraceMs: 15_000,
+    });
+    store.createRoom('Alex');
+
+    currentTime = 14_999;
+    expect(store.restoreSession('ABC123', 'host-token').room.status).toBe('lobby');
+    currentTime = 29_998;
+    expect(store.getRoom('ABC123').status).toBe('lobby');
+  });
+
+  it('allows only the host to explicitly end a room and keeps the ended tombstone', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+
+    expect(() => store.endRoom('ABC123', 'participant-token')).toThrow(
+      RoomAuthorizationError,
+    );
+    const endedRoom = store.endRoom('ABC123', 'host-token');
+
+    expect(endedRoom).toEqual(expect.objectContaining({
+      status: 'ended',
+      endedReason: 'host-ended',
+      endedMessage: 'The host ended this room.',
+    }));
+    expect(store.endRoom('ABC123', 'host-token')).toEqual(endedRoom);
+    expect(store.getRoom('ABC123')).toEqual(endedRoom);
+    expect(() => store.submitVote('ABC123', 'participant-token', '5')).toThrow(
+      RoomStateError,
+    );
+  });
 });
 

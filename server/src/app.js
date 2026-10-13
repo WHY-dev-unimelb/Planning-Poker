@@ -43,13 +43,17 @@ export function createApp({ roomStore = createRoomStore() } = {}) {
         response.status(400).json({ error: error.message });
         return;
       }
+      if (error instanceof RoomStateError) {
+        response.status(409).json({ error: error.message });
+        return;
+      }
 
       response.status(500).json({ error: 'Unable to join the room.' });
     }
   });
 
   app.get('/api/rooms/:roomCode', (request, response) => {
-    const room = roomStore.getRoom(request.params.roomCode);
+    const room = roomStore.getRoom(request.params.roomCode, getBearerToken(request));
     if (!room) {
       response.status(404).json({ error: 'Room not found. Check the code and try again.' });
       return;
@@ -216,6 +220,27 @@ export function createApp({ roomStore = createRoomStore() } = {}) {
       }
 
       response.status(500).json({ error: 'Unable to start the next story.' });
+    }
+  });
+
+  app.post('/api/rooms/:roomCode/end', (request, response) => {
+    try {
+      const room = roomStore.endRoom(
+        request.params.roomCode,
+        getBearerToken(request),
+      );
+      response.json({ room });
+    } catch (error) {
+      if (error instanceof RoomNotFoundError) {
+        response.status(404).json({ error: error.message });
+        return;
+      }
+      if (error instanceof RoomAuthorizationError) {
+        response.status(403).json({ error: error.message });
+        return;
+      }
+
+      response.status(500).json({ error: 'Unable to end the room.' });
     }
   });
 
