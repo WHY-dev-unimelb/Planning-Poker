@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { addStory, createRoom, getRoom, joinRoom } from './api.js';
+import { addStory, createRoom, getRoom, joinRoom, submitVote } from './api.js';
 
 const POLLING_INTERVAL_MS = 1000;
 
@@ -16,6 +16,9 @@ export default function App() {
   const [storyText, setStoryText] = useState('');
   const [storyError, setStoryError] = useState('');
   const [isStartingStory, setIsStartingStory] = useState(false);
+  const [selectedVote, setSelectedVote] = useState(null);
+  const [voteError, setVoteError] = useState('');
+  const [isSubmittingVote, setIsSubmittingVote] = useState(false);
 
   useEffect(() => {
     if (!roomSession) {
@@ -112,6 +115,24 @@ export default function App() {
     }
   }
 
+  async function handleVote(value) {
+    setVoteError('');
+    setIsSubmittingVote(true);
+    try {
+      const latest = await submitVote(
+        roomSession.room.code,
+        roomSession.participantToken,
+        value,
+      );
+      setSelectedVote(value);
+      setRoomSession((current) => ({ ...current, room: latest.room }));
+    } catch (requestError) {
+      setVoteError(requestError.message);
+    } finally {
+      setIsSubmittingVote(false);
+    }
+  }
+
   if (roomSession) {
     const isVoting = roomSession.room.status === 'voting';
     return (
@@ -125,11 +146,34 @@ export default function App() {
           </p>
 
           {isVoting ? (
-            <div className="story-section">
-              <p className="section-label">Current story</p>
-              <h2>{roomSession.room.currentStory.text}</h2>
-              <p className="supporting-text">Card selection is added in the next slice.</p>
-            </div>
+            <>
+              <div className="story-section">
+                <p className="section-label">Current story</p>
+                <h2>{roomSession.room.currentStory.text}</h2>
+              </div>
+              <fieldset className="card-picker" disabled={isSubmittingVote}>
+                <legend>Choose your estimate</legend>
+                <div className="card-grid">
+                  {roomSession.room.deck.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className="estimate-card"
+                      aria-pressed={selectedVote === value}
+                      onClick={() => handleVote(value)}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              {selectedVote && (
+                <p className="own-vote">
+                  Your selection: <strong>{selectedVote}</strong>
+                </p>
+              )}
+              <FormMessage error={voteError} />
+            </>
           ) : viewerRole === 'host' ? (
             <form className="story-form" onSubmit={handleAddStory} noValidate>
               <label htmlFor="story-text">Story</label>
@@ -156,7 +200,14 @@ export default function App() {
               {roomSession.room.participants.map((participant) => (
                 <li key={participant.id}>
                   <span>{participant.label}</span>
-                  {participant.role === 'host' && <span className="role-badge">Host</span>}
+                  <span className="participant-badges">
+                    {participant.role === 'host' && <span className="role-badge">Host</span>}
+                    {isVoting && (
+                      <span className={participant.hasVoted ? 'vote-status voted' : 'vote-status'}>
+                        {participant.hasVoted ? 'Voted' : 'Not voted'}
+                      </span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

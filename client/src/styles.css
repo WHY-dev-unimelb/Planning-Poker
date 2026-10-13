@@ -175,6 +175,44 @@ button:disabled {
   background: #f3f6fb;
 }
 
+.card-picker {
+  padding: 0;
+  margin: 0 0 14px;
+  border: 0;
+}
+
+.card-picker legend {
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.estimate-card {
+  min-height: 58px;
+  margin: 0;
+  border: 2px solid #d9e1ee;
+  color: #2444a5;
+  background: #ffffff;
+  font-size: 1.1rem;
+}
+
+.estimate-card[aria-pressed='true'] {
+  border-color: #3157d5;
+  color: #ffffff;
+  background: #3157d5;
+}
+
+.own-vote {
+  margin-bottom: 20px;
+  color: #526581;
+  font-size: 0.9rem;
+}
+
 .story-section h2 {
   margin-bottom: 8px;
 }
@@ -208,6 +246,12 @@ button:disabled {
   padding: 12px 0;
 }
 
+.participant-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .role-badge {
   padding: 4px 8px;
   border-radius: 999px;
@@ -215,5 +259,15 @@ button:disabled {
   background: #e8edff;
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+.vote-status {
+  color: #667085;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.vote-status.voted {
+  color: #087443;
 }
 

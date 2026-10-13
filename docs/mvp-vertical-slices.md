@@ -85,7 +85,7 @@ A participant joins with a room code and display name, and all open clients see 
 
 ## Slice 3: Host adds the first story
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -118,6 +118,8 @@ The host adds a story from the lobby, and every participant sees that story ente
 - Manual check: add a story in the host window and confirm it appears in participant windows.
 
 ## Slice 4: Participants vote privately
+
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 

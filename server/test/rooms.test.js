@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createRoomStore,
+  PLANNING_POKER_DECK,
   RoomAuthorizationError,
   RoomNotFoundError,
   RoomStateError,
@@ -127,6 +128,43 @@ describe('room store', () => {
     store.addStory('ABC123', 'host-token', 'First story');
 
     expect(() => store.addStory('ABC123', 'host-token', 'Second story')).toThrow(RoomStateError);
+  });
+
+  it('replaces a participant vote without exposing its value in public room state', () => {
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'host-token',
+    });
+    store.createRoom('Alex');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+
+    const firstVote = store.submitVote('ABC123', 'host-token', '3');
+    const changedVote = store.submitVote('ABC123', 'host-token', '8');
+
+    expect(firstVote.selectedVote).toBe('3');
+    expect(changedVote.selectedVote).toBe('8');
+    expect(changedVote.room.deck).toEqual(PLANNING_POKER_DECK);
+    expect(changedVote.room.participants[0].hasVoted).toBe(true);
+    expect(changedVote.room).not.toHaveProperty('votes');
+    expect(changedVote.room.participants[0]).not.toHaveProperty('vote');
+  });
+
+  it('rejects invalid card values and invalid participant tokens', () => {
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'host-token',
+    });
+    store.createRoom('Alex');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+
+    expect(() => store.submitVote('ABC123', 'host-token', '100')).toThrow(
+      RoomValidationError,
+    );
+    expect(() => store.submitVote('ABC123', 'invalid-token', '5')).toThrow(
+      RoomAuthorizationError,
+    );
   });
 });
 

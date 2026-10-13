@@ -13,13 +13,22 @@ function successfulResponse(data) {
 function roomSession(participants = [
   { id: '123', name: 'Alex', label: 'Alex #123', role: 'host' },
 ], roomOverrides = {}) {
+  const room = {
+    code: 'ABC123',
+    status: 'lobby',
+    participants,
+    ...roomOverrides,
+  };
+  if (room.status === 'voting') {
+    room.deck ??= ['1', '2', '3', '5', '8', '13', '21', '?'];
+    room.participants = room.participants.map((participant) => ({
+      hasVoted: false,
+      ...participant,
+    }));
+  }
+
   return {
-    room: {
-      code: 'ABC123',
-      status: 'lobby',
-      participants,
-      ...roomOverrides,
-    },
+    room,
     participantToken: 'private-token',
   };
 }
@@ -221,5 +230,89 @@ describe('starting the first story', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a story to start voting.');
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('private voting', () => {
+  function votingSession(participants) {
+    return roomSession(participants, {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    });
+  }
+
+  async function joinVotingRoom(user) {
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+    await screen.findByRole('heading', { name: 'Estimate login flow' });
+  }
+
+  it('submits a card and lets the participant change it', async () => {
+    const user = userEvent.setup();
+    const beforeVote = votingSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+      { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant', hasVoted: false },
+    ]);
+    const afterVote = votingSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+      { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant', hasVoted: true },
+    ]);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(beforeVote))
+      .mockResolvedValueOnce(successfulResponse({ room: afterVote.room }))
+      .mockResolvedValueOnce(successfulResponse({ room: afterVote.room }));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+
+    await user.click(await screen.findByRole('button', { name: '3' }));
+    expect(screen.getByRole('button', { name: '3' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/Your selection:/)).toHaveTextContent('Your selection: 3');
+
+    await user.click(screen.getByRole('button', { name: '8' }));
+    expect(screen.getByRole('button', { name: '3' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: '8' })).toHaveAttribute('aria-pressed', 'true');
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      '/api/rooms/ABC123/vote',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({ Authorization: 'Bearer private-token' }),
+        body: JSON.stringify({ value: '3' }),
+      }),
+    );
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      3,
+      '/api/rooms/ABC123/vote',
+      expect.objectContaining({ body: JSON.stringify({ value: '8' }) }),
+    );
+  });
+
+  it('shows voting status from polling without showing selected values', async () => {
+    const user = userEvent.setup();
+    const initial = votingSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+      { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant', hasVoted: false },
+    ]);
+    const updated = votingSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: true },
+      { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant', hasVoted: false },
+    ]);
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(initial))
+      .mockResolvedValue(successfulResponse({ room: updated.room }));
+
+    await joinVotingRoom(user);
+
+    expect(await screen.findByText('Voted', {}, { timeout: 2500 })).toBeVisible();
+    expect(screen.getByText('Not voted')).toBeVisible();
+    expect(screen.queryByText('Alex voted 13')).not.toBeInTheDocument();
   });
 });

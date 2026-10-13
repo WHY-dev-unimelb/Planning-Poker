@@ -3,6 +3,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 const ROOM_CODE_CHARACTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 const MAX_GENERATION_ATTEMPTS = 100;
+export const PLANNING_POKER_DECK = Object.freeze(['1', '2', '3', '5', '8', '13', '21', '?']);
 
 export class RoomValidationError extends Error {}
 export class RoomNotFoundError extends Error {}
@@ -124,18 +125,50 @@ export function createRoomStore({
     }
 
     room.currentStory = { text: normalizedStory };
+    room.votes = new Map();
     room.status = 'voting';
     return toPublicRoom(room);
+  }
+
+  function submitVote(roomCode, participantToken, value) {
+    const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
+    const room = rooms.get(normalizedCode);
+    if (!room) {
+      throw new RoomNotFoundError('Room not found. Check the code and try again.');
+    }
+
+    const participant = room.participants.find(({ token }) => token === participantToken);
+    if (!participant) {
+      throw new RoomAuthorizationError('A valid participant token is required to vote.');
+    }
+
+    if (room.status !== 'voting') {
+      throw new RoomStateError('Voting is not active.');
+    }
+
+    if (typeof value !== 'string' || !PLANNING_POKER_DECK.includes(value)) {
+      throw new RoomValidationError('Choose a card from the Planning Poker deck.');
+    }
+
+    room.votes.set(participant.id, value);
+    return {
+      room: toPublicRoom(room),
+      selectedVote: value,
+    };
   }
 
   function toPublicRoom(room) {
     const publicRoom = {
       code: room.code,
       status: room.status,
-      participants: room.participants.map(({ token: _token, ...participant }) => participant),
+      participants: room.participants.map(({ token: _token, ...participant }) => ({
+        ...participant,
+        ...(room.status === 'voting' ? { hasVoted: room.votes.has(participant.id) } : {}),
+      })),
     };
     if (room.currentStory) {
       publicRoom.currentStory = { ...room.currentStory };
+      publicRoom.deck = [...PLANNING_POKER_DECK];
     }
     return publicRoom;
   }
@@ -144,6 +177,7 @@ export function createRoomStore({
     createRoom,
     joinRoom,
     addStory,
+    submitVote,
     getRoom(code) {
       const normalizedCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
       const room = rooms.get(normalizedCode);

@@ -102,8 +102,15 @@ describe('POST /api/rooms/:roomCode/story', () => {
       code: 'ABC123',
       status: 'voting',
       currentStory: { text: 'Estimate login flow' },
+      deck: ['1', '2', '3', '5', '8', '13', '21', '?'],
       participants: [
-        { id: '123', name: 'Alex', label: 'Alex #123', role: 'host' },
+        {
+          id: '123',
+          name: 'Alex',
+          label: 'Alex #123',
+          role: 'host',
+          hasVoted: false,
+        },
       ],
     });
   });
@@ -140,6 +147,67 @@ describe('POST /api/rooms/:roomCode/story', () => {
       .expect(400);
 
     expect(response.body).toEqual({ error: 'Enter a story to start voting.' });
+  });
+});
+
+describe('PUT /api/rooms/:roomCode/vote', () => {
+  async function createVotingRoom(app) {
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate login flow' })
+      .expect(201);
+  }
+
+  it('accepts every fixed deck value and keeps selected values out of room state', async () => {
+    const app = createTestApplication();
+    await createVotingRoom(app);
+
+    for (const value of ['1', '2', '3', '5', '8', '13', '21', '?']) {
+      const response = await request(app)
+        .put('/api/rooms/ABC123/vote')
+        .set('Authorization', 'Bearer host-token')
+        .send({ value })
+        .expect(200);
+
+      expect(response.body.room.participants[0].hasVoted).toBe(true);
+      expect(response.body.room).not.toHaveProperty('votes');
+      expect(response.body.room.participants[0]).not.toHaveProperty('vote');
+    }
+
+    const publicResponse = await request(app).get('/api/rooms/ABC123').expect(200);
+    expect(publicResponse.body.room).not.toHaveProperty('votes');
+    expect(publicResponse.body.room.participants[0]).toEqual(
+      expect.objectContaining({ hasVoted: true }),
+    );
+    expect(publicResponse.body.room.participants[0]).not.toHaveProperty('vote');
+  });
+
+  it('rejects an invalid card value', async () => {
+    const app = createTestApplication();
+    await createVotingRoom(app);
+
+    const response = await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', 'Bearer host-token')
+      .send({ value: '100' })
+      .expect(400);
+
+    expect(response.body).toEqual({ error: 'Choose a card from the Planning Poker deck.' });
+  });
+
+  it('rejects an invalid participant token', async () => {
+    const app = createTestApplication();
+    await createVotingRoom(app);
+
+    const response = await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', 'Bearer invalid-token')
+      .send({ value: '5' })
+      .expect(403);
+
+    expect(response.body).toEqual({ error: 'A valid participant token is required to vote.' });
   });
 });
 

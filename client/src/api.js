@@ -47,3 +47,16 @@ export async function addStory(roomCode, participantToken, storyText) {
   );
 }
 
+export async function submitVote(roomCode, participantToken, value) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/vote`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${participantToken}`,
+      },
+      body: JSON.stringify({ value }),
+    }),
+  );
+}
+

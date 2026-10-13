@@ -1,7 +1,7 @@
 # Slice 3 Test Plan: Host Adds the First Story
 
 - **Slice:** 3 — Host adds the first story
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [MVP vertical slices](../mvp-vertical-slices.md#slice-3-host-adds-the-first-story)
 
@@ -161,7 +161,7 @@ Executed on 13 October 2026:
 - Live API host story transition: **passed**.
 - Live API late-join story synchronization: **passed**.
 - Live API participant authorization rejection: **passed** with status `403`.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed**, confirmed by the user on 13 October 2026.
 
 ## Exit criteria
 
