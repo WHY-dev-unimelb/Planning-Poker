@@ -5,6 +5,7 @@ import {
   getRoom,
   joinRoom,
   revealEstimates,
+  startRevote,
   submitVote,
 } from './api.js';
 
@@ -28,6 +29,8 @@ export default function App() {
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
   const [revealError, setRevealError] = useState('');
   const [isRevealing, setIsRevealing] = useState(false);
+  const [roundActionError, setRoundActionError] = useState('');
+  const [isRestartingVote, setIsRestartingVote] = useState(false);
 
   useEffect(() => {
     if (!roomSession) {
@@ -51,6 +54,12 @@ export default function App() {
       clearInterval(intervalId);
     };
   }, [roomSession?.room.code]);
+
+  useEffect(() => {
+    if (roomSession?.room.status === 'voting') {
+      setSelectedVote(null);
+    }
+  }, [roomSession?.room.status]);
 
   function chooseMode(nextMode) {
     setMode(nextMode);
@@ -158,6 +167,23 @@ export default function App() {
     }
   }
 
+  async function handleRevote() {
+    setRoundActionError('');
+    setIsRestartingVote(true);
+    try {
+      const latest = await startRevote(
+        roomSession.room.code,
+        roomSession.participantToken,
+      );
+      setSelectedVote(null);
+      setRoomSession((current) => ({ ...current, room: latest.room }));
+    } catch (requestError) {
+      setRoundActionError(requestError.message);
+    } finally {
+      setIsRestartingVote(false);
+    }
+  }
+
   if (roomSession) {
     const isVoting = roomSession.room.status === 'voting';
     const isRevealed = roomSession.room.status === 'revealed';
@@ -233,6 +259,14 @@ export default function App() {
                   ))}
                 </ul>
               </div>
+              {viewerRole === 'host' && (
+                <div className="round-actions">
+                  <button type="button" onClick={handleRevote} disabled={isRestartingVote}>
+                    {isRestartingVote ? 'Starting revote…' : 'Revote'}
+                  </button>
+                  <FormMessage error={roundActionError} />
+                </div>
+              )}
             </>
           ) : viewerRole === 'host' ? (
             <form className="story-form" onSubmit={handleAddStory} noValidate>

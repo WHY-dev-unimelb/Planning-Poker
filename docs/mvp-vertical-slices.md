@@ -154,7 +154,7 @@ Participants select or change a card while everyone can see who has voted withou
 
 ## Slice 5: Host reveals estimates
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -187,6 +187,8 @@ The host reveals the round and every participant sees the submitted estimates, i
 - Manual check: reveal early with one voter and one non-voter across separate windows.
 
 ## Slice 6: Host starts a revote
+
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 

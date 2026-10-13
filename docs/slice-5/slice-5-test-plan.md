@@ -1,7 +1,7 @@
 # Slice 5 Test Plan: Host Reveals Estimates
 
 - **Slice:** 5 — Host reveals estimates
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [MVP vertical slices](../mvp-vertical-slices.md#slice-5-host-reveals-estimates)
 
@@ -152,7 +152,7 @@ Executed on 13 October 2026:
 - Live API early-reveal and explicit non-voter check: **passed**.
 - Live API post-reveal vote rejection: **passed** with status `409`.
 - Live API participant reveal rejection: **passed** with status `403`.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed**, confirmed by the user on 13 October 2026.
 
 ## Exit criteria
 

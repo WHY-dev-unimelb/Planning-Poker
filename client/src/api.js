@@ -71,3 +71,14 @@ export async function revealEstimates(roomCode, participantToken) {
   );
 }
 
+export async function startRevote(roomCode, participantToken) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/revote`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${participantToken}`,
+      },
+    }),
+  );
+}
+

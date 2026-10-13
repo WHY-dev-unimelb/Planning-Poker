@@ -206,5 +206,48 @@ describe('room store', () => {
       RoomAuthorizationError,
     );
   });
+
+  it('restarts voting for the same story and clears every vote', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+    store.submitVote('ABC123', 'host-token', '5');
+    store.submitVote('ABC123', 'participant-token', '8');
+    store.revealRound('ABC123', 'host-token');
+
+    const room = store.restartVoting('ABC123', 'host-token');
+
+    expect(room.status).toBe('voting');
+    expect(room.currentStory).toEqual({ text: 'Estimate login flow' });
+    expect(room.participants.every(({ hasVoted }) => hasVoted === false)).toBe(true);
+    expect(room.participants.every((participant) => !Object.hasOwn(participant, 'vote'))).toBe(true);
+    expect(store.submitVote('ABC123', 'participant-token', '13').selectedVote).toBe('13');
+  });
+
+  it('allows only the host to revote and only after reveal', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+
+    expect(() => store.restartVoting('ABC123', 'host-token')).toThrow(RoomStateError);
+    store.revealRound('ABC123', 'host-token');
+    expect(() => store.restartVoting('ABC123', 'participant-token')).toThrow(
+      RoomAuthorizationError,
+    );
+  });
 });
 

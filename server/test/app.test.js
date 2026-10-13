@@ -277,3 +277,74 @@ describe('POST /api/rooms/:roomCode/reveal', () => {
   });
 });
 
+describe('POST /api/rooms/:roomCode/revote', () => {
+  async function prepareRevealedRoom(app) {
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate login flow' })
+      .expect(201);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .send({ value: '8' })
+      .expect(200);
+    await request(app)
+      .post('/api/rooms/ABC123/reveal')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+    return join.body.participantToken;
+  }
+
+  it('lets the host restart a clean vote for the same story', async () => {
+    const app = createTestApplication();
+    const participantToken = await prepareRevealedRoom(app);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/revote')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+
+    expect(response.body.room.status).toBe('voting');
+    expect(response.body.room.currentStory).toEqual({ text: 'Estimate login flow' });
+    expect(response.body.room.participants.every(({ hasVoted }) => !hasVoted)).toBe(true);
+    expect(response.body.room.participants.every((participant) => !('vote' in participant))).toBe(true);
+
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${participantToken}`)
+      .send({ value: '13' })
+      .expect(200);
+  });
+
+  it('rejects revote before reveal', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate login flow' })
+      .expect(201);
+
+    await request(app)
+      .post('/api/rooms/ABC123/revote')
+      .set('Authorization', 'Bearer host-token')
+      .expect(409);
+  });
+
+  it('forbids a participant from starting a revote', async () => {
+    const app = createTestApplication();
+    const participantToken = await prepareRevealedRoom(app);
+
+    await request(app)
+      .post('/api/rooms/ABC123/revote')
+      .set('Authorization', `Bearer ${participantToken}`)
+      .expect(403);
+  });
+});
+

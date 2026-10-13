@@ -389,5 +389,60 @@ describe('revealing estimates', () => {
       await screen.findByRole('heading', { name: 'Estimates revealed' }, { timeout: 2500 }),
     ).toBeVisible();
     expect(screen.getByText('No vote')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Revote' })).not.toBeInTheDocument();
+  });
+});
+
+describe('revoting', () => {
+  it('lets the host restart voting for the same story with clean selections', async () => {
+    const user = userEvent.setup();
+    const votingRoom = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+    ], {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    }).room;
+    const votedRoom = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: true },
+    ], {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    }).room;
+    const revealedRoom = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', vote: '8' },
+    ], {
+      status: 'revealed',
+      currentStory: { text: 'Estimate login flow' },
+      deck: ['1', '2', '3', '5', '8', '13', '21', '?'],
+    }).room;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: votingRoom }))
+      .mockResolvedValueOnce(successfulResponse({ room: votedRoom }))
+      .mockResolvedValueOnce(successfulResponse({ room: revealedRoom }))
+      .mockResolvedValueOnce(successfulResponse({ room: votingRoom }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.type(await screen.findByLabelText('Story'), 'Estimate login flow');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+    await user.click(await screen.findByRole('button', { name: '8' }));
+    await user.click(screen.getByRole('button', { name: 'Reveal estimates' }));
+    await user.click(await screen.findByRole('button', { name: 'Revote' }));
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      5,
+      '/api/rooms/ABC123/revote',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer private-token' }),
+      }),
+    );
+    expect(await screen.findByRole('heading', { name: 'Voting has started' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Estimate login flow' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '8' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText('Not voted')).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Estimates' })).not.toBeInTheDocument();
   });
 });

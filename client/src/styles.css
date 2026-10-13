@@ -241,6 +241,11 @@ button:disabled {
   text-align: right;
 }
 
+.round-actions {
+  display: grid;
+  margin-bottom: 24px;
+}
+
 .story-section h2 {
   margin-bottom: 8px;
 }

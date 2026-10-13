@@ -1,0 +1,195 @@
+$baseUrl = "http://localhost:3001"
+
+
+function Invoke-RequestAllowError {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Method,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Uri,
+
+        [hashtable]$Headers = @{},
+
+        [string]$Body
+    )
+
+    try {
+        $requestParameters = @{
+            Method          = $Method
+            Uri             = $Uri
+            Headers         = $Headers
+            UseBasicParsing = $true
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($Body)) {
+            $requestParameters.ContentType = "application/json"
+            $requestParameters.Body = $Body
+        }
+
+        $response = Invoke-WebRequest @requestParameters
+
+        return [PSCustomObject]@{
+            StatusCode = [int]$response.StatusCode
+            Content    = $response.Content
+        }
+    }
+    catch {
+        if ($null -ne $_.Exception.Response) {
+            $errorResponse = $_.Exception.Response
+            $responseContent = ""
+
+            try {
+                $responseStream = $errorResponse.GetResponseStream()
+
+                if ($null -ne $responseStream) {
+                    $reader = New-Object System.IO.StreamReader($responseStream)
+
+                    try {
+                        $responseContent = $reader.ReadToEnd()
+                    }
+                    finally {
+                        $reader.Dispose()
+                    }
+                }
+            }
+            catch {
+                $responseContent = $_.Exception.Message
+            }
+
+            return [PSCustomObject]@{
+                StatusCode = [int]$errorResponse.StatusCode
+                Content    = $responseContent
+            }
+        }
+
+        throw
+    }
+}
+
+Write-Host "`n1. Creating room..."
+
+$hostSession = Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms" `
+    -ContentType "application/json" `
+    -Body '{"hostName":"Host"}'
+
+# 注意：正确字段是 room.code，不是 room.roomCode
+$roomCode = $hostSession.room.code
+$hostToken = $hostSession.participantToken
+
+if ([string]::IsNullOrWhiteSpace($roomCode)) {
+    $hostSession | ConvertTo-Json -Depth 10
+    throw "Room creation did not return room.code."
+}
+
+if ([string]::IsNullOrWhiteSpace($hostToken)) {
+    throw "Room creation did not return a host participantToken."
+}
+
+Write-Host "Created room: $roomCode"
+
+Write-Host "`n2. Joining as participant..."
+
+$participantSession = Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/participants" `
+    -ContentType "application/json" `
+    -Body '{"participantName":"Participant"}'
+
+$participantToken = $participantSession.participantToken
+
+if ([string]::IsNullOrWhiteSpace($participantToken)) {
+    throw "Joining the room did not return a participantToken."
+}
+
+Write-Host "Participant joined."
+
+Write-Host "`n3. Adding a story..."
+
+Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/story" `
+    -Headers @{
+        Authorization = "Bearer $hostToken"
+    } `
+    -ContentType "application/json" `
+    -Body '{"storyText":"Test revote authorization"}' |
+    Out-Null
+
+Write-Host "Story added. Room should now be in voting state."
+
+Write-Host "`n4. Host attempts revote before reveal..."
+
+$hostFailure = Invoke-RequestAllowError `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/revote" `
+    -Headers @{
+        Authorization = "Bearer $hostToken"
+    }
+
+$stateAfterHostFailure = Invoke-RestMethod `
+    -Method Get `
+    -Uri "$baseUrl/api/rooms/$roomCode"
+
+Write-Host "Host revote status: $($hostFailure.StatusCode)"
+Write-Host "Room state afterward: $($stateAfterHostFailure.room.status)"
+
+Write-Host "`n5. Host reveals the round..."
+
+Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/reveal" `
+    -Headers @{
+        Authorization = "Bearer $hostToken"
+    } |
+    Out-Null
+
+Write-Host "Round revealed."
+
+Write-Host "`n6. Participant attempts to start a revote..."
+
+$participantFailure = Invoke-RequestAllowError `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/revote" `
+    -Headers @{
+        Authorization = "Bearer $participantToken"
+    }
+
+$stateAfterParticipantFailure = Invoke-RestMethod `
+    -Method Get `
+    -Uri "$baseUrl/api/rooms/$roomCode"
+
+Write-Host "Participant revote status: $($participantFailure.StatusCode)"
+Write-Host "Room state afterward: $($stateAfterParticipantFailure.room.status)"
+
+Write-Host "`n7. Test E results:`n"
+
+$results = [PSCustomObject]@{
+    HostRevoteBeforeReveal       = $hostFailure.StatusCode
+    StateAfterHostFailure        = $stateAfterHostFailure.room.status
+    ParticipantRevoteAfterReveal = $participantFailure.StatusCode
+    StateAfterParticipantFailure = $stateAfterParticipantFailure.room.status
+}
+
+$results | Format-List
+
+$passed =
+    $hostFailure.StatusCode -eq 409 -and
+    $stateAfterHostFailure.room.status -eq "voting" -and
+    $participantFailure.StatusCode -eq 403 -and
+    $stateAfterParticipantFailure.room.status -eq "revealed"
+
+if ($passed) {
+    Write-Host "TEST E PASSED" -ForegroundColor Green
+}
+else {
+    Write-Host "TEST E FAILED" -ForegroundColor Red
+
+    Write-Host "`nHost failure response:"
+    Write-Host $hostFailure.Content
+
+    Write-Host "`nParticipant failure response:"
+    Write-Host $participantFailure.Content
+}

@@ -179,6 +179,29 @@ export function createRoomStore({
     return toPublicRoom(room);
   }
 
+  function restartVoting(roomCode, participantToken) {
+    const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
+    const room = rooms.get(normalizedCode);
+    if (!room) {
+      throw new RoomNotFoundError('Room not found. Check the code and try again.');
+    }
+
+    const host = room.participants.find(
+      (participant) => participant.token === participantToken && participant.role === 'host',
+    );
+    if (!host) {
+      throw new RoomAuthorizationError('Only the host can start a revote.');
+    }
+
+    if (room.status !== 'revealed') {
+      throw new RoomStateError('A revote can only start after estimates are revealed.');
+    }
+
+    room.votes = new Map();
+    room.status = 'voting';
+    return toPublicRoom(room);
+  }
+
   function toPublicRoom(room) {
     const publicRoom = {
       code: room.code,
@@ -204,6 +227,7 @@ export function createRoomStore({
     addStory,
     submitVote,
     revealRound,
+    restartVoting,
     getRoom(code) {
       const normalizedCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
       const room = rooms.get(normalizedCode);
