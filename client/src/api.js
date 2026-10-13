@@ -124,3 +124,14 @@ export async function endRoom(roomCode, participantToken) {
   );
 }
 
+export async function leaveRoom(roomCode, participantToken) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/leave`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${participantToken}`,
+      },
+    }),
+  );
+}
+

@@ -154,11 +154,27 @@ button:disabled {
 }
 
 .room-code {
-  margin-bottom: 30px;
+  margin: 0;
   color: #3157d5;
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: 0.18em;
+}
+
+.room-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.copy-button {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 12px;
+  color: #2444a5;
+  background: #e8edff;
 }
 
 .lobby-section {
@@ -181,6 +197,8 @@ button:disabled {
 }
 
 .room-management {
+  display: grid;
+  gap: 10px;
   padding-top: 22px;
   margin-top: 22px;
   border-top: 1px solid #e3e8f1;
@@ -190,6 +208,13 @@ button:disabled {
   width: 100%;
   color: #b42318;
   background: #fee4e2;
+}
+
+.leave-button {
+  width: 100%;
+  margin-top: 0;
+  color: #344054;
+  background: #edf1f7;
 }
 
 .story-section {
@@ -358,6 +383,15 @@ button:disabled {
   border-radius: 999px;
   color: #2444a5;
   background: #e8edff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.you-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #087443;
+  background: #d1fadf;
   font-size: 0.75rem;
   font-weight: 700;
 }

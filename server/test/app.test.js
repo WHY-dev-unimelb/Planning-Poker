@@ -31,6 +31,7 @@ describe('POST /api/rooms', () => {
         ],
       },
       participantToken: 'host-token',
+      participantId: '123',
     });
   });
 
@@ -76,6 +77,7 @@ describe('room participation endpoints', () => {
       .expect(201);
 
     expect(joinResponse.body.participantToken).toBe('participant-token-1');
+    expect(joinResponse.body.participantId).toBe('456');
     expect(joinResponse.body.room.participants).toEqual([
       { id: '123', name: 'Alex', label: 'Alex #123', role: 'host' },
       { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant' },
@@ -138,6 +140,7 @@ describe('GET /api/rooms/:roomCode/session', () => {
       .expect(200);
 
     expect(response.body.participantRole).toBe('participant');
+    expect(response.body.participantId).toBe('456');
     expect(response.body.selectedVote).toBe('8');
     expect(response.body.participantToken).toBe('participant-token-1');
     expect(response.body.room.participants.every((participant) => !('vote' in participant))).toBe(true);
@@ -550,6 +553,57 @@ describe('completed round history', () => {
 });
 
 describe('room lifecycle', () => {
+  it('removes a participant who leaves and invalidates their session', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate login flow' })
+      .expect(201);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .send({ value: '8' })
+      .expect(200);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/leave')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .expect(200);
+
+    expect(response.body.room.participants).toEqual([
+      expect.objectContaining({ id: '123', role: 'host', hasVoted: false }),
+    ]);
+    await request(app)
+      .get('/api/rooms/ABC123/session')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .expect(403);
+  });
+
+  it('ends the room when the host leaves and rejects invalid leave credentials', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+
+    await request(app)
+      .post('/api/rooms/ABC123/leave')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(403);
+    const response = await request(app)
+      .post('/api/rooms/ABC123/leave')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+
+    expect(response.body.room).toEqual(expect.objectContaining({
+      status: 'ended',
+      endedReason: 'host-ended',
+    }));
+  });
+
   it('returns an ended tombstone after the host lease expires', async () => {
     let currentTime = 0;
     const ids = ['123', '456'];

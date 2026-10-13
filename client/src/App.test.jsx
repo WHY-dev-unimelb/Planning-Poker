@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.jsx';
 
@@ -30,6 +30,7 @@ function roomSession(participants = [
   return {
     room,
     participantToken: 'private-token',
+    participantId: participants.at(-1).id,
   };
 }
 
@@ -37,6 +38,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   sessionStorage.clear();
+  localStorage.clear();
 });
 
 describe('room entry', () => {
@@ -59,6 +61,7 @@ describe('room entry', () => {
     expect(screen.getByText('ABC123')).toBeVisible();
     expect(screen.getByText('Alex #123')).toBeVisible();
     expect(screen.getByText('Host')).toBeVisible();
+    expect(screen.getByText('You')).toBeVisible();
     expect(JSON.parse(sessionStorage.getItem('planning-poker-session'))).toEqual({
       roomCode: 'ABC123',
       participantToken: 'private-token',
@@ -130,6 +133,25 @@ describe('room entry', () => {
     );
     expect(await screen.findByText('Sam #456')).toBeVisible();
     expect(screen.getByText('Alex #123')).toBeVisible();
+    expect(within(screen.getByText('Sam #456').closest('li')).getByText('You')).toBeVisible();
+    expect(within(screen.getByText('Alex #123').closest('li')).queryByText('You')).toBeNull();
+  });
+
+  it('persists the display name across modes and browser tabs', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('planning-poker-name', 'Alex');
+
+    render(<App />);
+    expect(screen.getByLabelText('Your name')).toHaveValue('Alex');
+
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    expect(screen.getByLabelText('Your name')).toHaveValue('Alex');
+
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'planning-poker-name',
+      newValue: 'Taylor',
+    }));
+    await waitFor(() => expect(screen.getByLabelText('Your name')).toHaveValue('Taylor'));
   });
 
   it('shows a useful error when the room does not exist', async () => {
@@ -649,6 +671,7 @@ describe('session restoration', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse({
       room: restoredRoom,
       participantToken: 'private-token',
+      participantId: '456',
       participantRole: 'participant',
       selectedVote: '8',
     }));
@@ -689,6 +712,67 @@ describe('session restoration', () => {
 });
 
 describe('room lifecycle', () => {
+  it('copies the room code and confirms success', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse(roomSession()));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.click(await screen.findByRole('button', { name: 'Copy' }));
+
+    expect(writeText).toHaveBeenCalledWith('ABC123');
+    expect(screen.getByRole('button', { name: 'Copied!' })).toBeVisible();
+  });
+
+  it('lets a participant leave, returns home, and keeps their saved name', async () => {
+    const user = userEvent.setup();
+    const joinedSession = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host' },
+      { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant' },
+    ]);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(joinedSession))
+      .mockResolvedValueOnce(successfulResponse({ room: joinedSession.room }));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+    await user.click(await screen.findByRole('button', { name: 'Leave room' }));
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      '/api/rooms/ABC123/leave',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer private-token' }),
+      }),
+    );
+    expect(screen.getByRole('heading', { name: 'Join a room' })).toBeVisible();
+    expect(screen.getByLabelText('Your name')).toHaveValue('Sam');
+    expect(sessionStorage.getItem('planning-poker-session')).toBeNull();
+    expect(localStorage.getItem('planning-poker-name')).toBe('Sam');
+  });
+
+  it('shows only the end-room action to the host', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse(roomSession()));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+
+    expect(await screen.findByRole('button', { name: 'End room' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Leave room' })).not.toBeInTheDocument();
+  });
+
   it('lets the host confirm and explicitly end the room', async () => {
     const user = userEvent.setup();
     const endedRoom = roomSession(undefined, {
@@ -698,6 +782,7 @@ describe('room lifecycle', () => {
     }).room;
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: endedRoom }))
       .mockResolvedValueOnce(successfulResponse({ room: endedRoom }));
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
@@ -718,6 +803,14 @@ describe('room lifecycle', () => {
     expect(await screen.findByRole('heading', { name: 'Room ended' })).toBeVisible();
     expect(screen.getByText('The host ended this room.')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'End room' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Leave room' }));
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      3,
+      '/api/rooms/ABC123/leave',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(screen.getByRole('heading', { name: 'Create a room' })).toBeVisible();
+    expect(sessionStorage.getItem('planning-poker-session')).toBeNull();
   });
 
   it('does not end the room when the host cancels confirmation', async () => {

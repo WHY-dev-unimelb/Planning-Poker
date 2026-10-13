@@ -1,7 +1,7 @@
 # Slice 12 Test Plan: Host Disconnection Ends the Room
 
 - **Slice:** 12 — Host disconnection ends the room
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [Extended features vertical slices](../planning-poker-extended-features-vertical-slices.md#slice-12-host-disconnection-ends-the-room)
 
@@ -109,7 +109,7 @@ Executed on 13 October 2026:
 - Client production build: **passed**.
 - Host renewal, restoration grace, expiry, tombstone, and action rejection checks: **passed**.
 - Participant terminal-state rendering: **passed**.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed; confirmed by the user on 13 October 2026**.
 
 ## Exit criteria
 

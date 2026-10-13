@@ -5,6 +5,7 @@ import {
   endRoom,
   getRoom,
   joinRoom,
+  leaveRoom,
   revealEstimates,
   restoreSession,
   startNextStory,
@@ -14,6 +15,7 @@ import {
 
 const POLLING_INTERVAL_MS = 1000;
 const SESSION_STORAGE_KEY = 'planning-poker-session';
+const NAME_STORAGE_KEY = 'planning-poker-name';
 const DECK_PRESET_OPTIONS = [
   { value: 'fibonacci', label: 'Fibonacci — 1, 2, 3, 5, 8, 13, 21, ?' },
   { value: 'tshirt', label: 'T-shirt — XS, S, M, L, XL, ?' },
@@ -23,9 +25,8 @@ const DECK_PRESET_OPTIONS = [
 export default function App() {
   const [storedSession] = useState(readStoredSession);
   const [mode, setMode] = useState('create');
-  const [hostName, setHostName] = useState('');
+  const [displayName, setDisplayName] = useState(readStoredName);
   const [deckPreset, setDeckPreset] = useState('fibonacci');
-  const [participantName, setParticipantName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [roomSession, setRoomSession] = useState(null);
   const [viewerRole, setViewerRole] = useState(null);
@@ -47,6 +48,9 @@ export default function App() {
   const [isStartingNextStory, setIsStartingNextStory] = useState(false);
   const [endRoomError, setEndRoomError] = useState('');
   const [isEndingRoom, setIsEndingRoom] = useState(false);
+  const [leaveRoomError, setLeaveRoomError] = useState('');
+  const [isLeavingRoom, setIsLeavingRoom] = useState(false);
+  const [copyStatus, setCopyStatus] = useState('');
   const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedSession));
   const previousRoomStatus = useRef(null);
 
@@ -61,7 +65,11 @@ export default function App() {
         if (!isActive) {
           return;
         }
-        setRoomSession({ room: session.room, participantToken: session.participantToken });
+        setRoomSession({
+          room: session.room,
+          participantToken: session.participantToken,
+          participantId: session.participantId,
+        });
         setViewerRole(session.participantRole);
         setSelectedVote(session.selectedVote);
         setEntryMessage('Room restored');
@@ -87,6 +95,17 @@ export default function App() {
       isActive = false;
     };
   }, [storedSession]);
+
+  useEffect(() => {
+    function syncStoredName(event) {
+      if (event.key === NAME_STORAGE_KEY) {
+        setDisplayName(event.newValue ?? '');
+      }
+    }
+
+    window.addEventListener('storage', syncStoredName);
+    return () => window.removeEventListener('storage', syncStoredName);
+  }, []);
 
   useEffect(() => {
     if (!roomSession || roomSession.room.status === 'ended') {
@@ -133,6 +152,11 @@ export default function App() {
     setError('');
   }
 
+  function handleNameChange(value) {
+    setDisplayName(value);
+    saveStoredName(value);
+  }
+
   async function submit(action, role) {
     setError('');
     setIsSubmitting(true);
@@ -150,20 +174,22 @@ export default function App() {
 
   async function handleCreate(event) {
     event.preventDefault();
-    const trimmedName = hostName.trim();
+    const trimmedName = displayName.trim();
     if (!trimmedName) {
       setError('Enter your name to create a room.');
       return;
     }
 
     setEntryMessage('Room created');
+    saveStoredName(trimmedName);
+    setDisplayName(trimmedName);
     await submit(() => createRoom(trimmedName, deckPreset), 'host');
   }
 
   async function handleJoin(event) {
     event.preventDefault();
     const normalizedCode = roomCode.trim().toUpperCase();
-    const trimmedName = participantName.trim();
+    const trimmedName = displayName.trim();
     if (!normalizedCode) {
       setError('Enter a room code.');
       return;
@@ -174,6 +200,8 @@ export default function App() {
     }
 
     setEntryMessage('Room joined');
+    saveStoredName(trimmedName);
+    setDisplayName(trimmedName);
     await submit(() => joinRoom(normalizedCode, trimmedName), 'participant');
   }
 
@@ -299,6 +327,43 @@ export default function App() {
     }
   }
 
+  async function handleCopyRoomCode() {
+    setCopyStatus('');
+    try {
+      await navigator.clipboard.writeText(roomSession.room.code);
+      setCopyStatus('Copied');
+    } catch {
+      setCopyStatus('Copy failed. Select the room code and copy it manually.');
+    }
+  }
+
+  function returnHome() {
+    clearStoredSession();
+    setRoomSession(null);
+    setViewerRole(null);
+    setSelectedVote(null);
+    setRoomCode('');
+    setStoryText('');
+    setNextStoryText('');
+    setEntryMessage('');
+    setError('');
+    setCopyStatus('');
+    previousRoomStatus.current = null;
+  }
+
+  async function handleLeaveRoom() {
+    setLeaveRoomError('');
+    setIsLeavingRoom(true);
+    try {
+      await leaveRoom(roomSession.room.code, roomSession.participantToken);
+      returnHome();
+    } catch (requestError) {
+      setLeaveRoomError(requestError.message);
+    } finally {
+      setIsLeavingRoom(false);
+    }
+  }
+
   if (isRestoringSession) {
     return (
       <main className="page-shell">
@@ -316,6 +381,9 @@ export default function App() {
     const isEnded = roomSession.room.status === 'ended';
     const history = roomSession.room.history ?? [];
     const previousRounds = isRevealed ? history.slice(0, -1) : history;
+    const revealedParticipants = isRevealed && history.length > 0
+      ? history[history.length - 1].participants
+      : roomSession.room.participants;
     return (
       <main className="page-shell">
         <section className="panel" aria-labelledby="room-heading">
@@ -338,9 +406,17 @@ export default function App() {
                   : 'Planning Poker lobby'}
           </h1>
           <p className="room-code-label">Room code</p>
-          <p className="room-code" aria-label={`Room code ${roomSession.room.code}`}>
-            {roomSession.room.code}
-          </p>
+          <div className="room-code-row">
+            <p className="room-code" aria-label={`Room code ${roomSession.room.code}`}>
+              {roomSession.room.code}
+            </p>
+            <button type="button" className="copy-button" onClick={handleCopyRoomCode}>
+              {copyStatus === 'Copied' ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          {copyStatus && copyStatus !== 'Copied' && (
+            <p className="error-message" role="alert">{copyStatus}</p>
+          )}
 
           {isEnded ? (
             <p className="ended-message">{roomSession.room.endedMessage}</p>
@@ -390,7 +466,7 @@ export default function App() {
               <div className="results-section">
                 <h2>Estimates</h2>
                 <ul className="results-list">
-                  {roomSession.room.participants.map((participant) => (
+                  {revealedParticipants.map((participant) => (
                     <li key={participant.id}>
                       <span>{participant.label}</span>
                       <strong>{participant.vote ?? 'No vote'}</strong>
@@ -452,6 +528,9 @@ export default function App() {
                   <span>{participant.label}</span>
                   <span className="participant-badges">
                     {participant.role === 'host' && <span className="role-badge">Host</span>}
+                    {participant.id === roomSession.participantId && (
+                      <span className="you-badge">You</span>
+                    )}
                     {isVoting && (
                       <span className={participant.hasVoted ? 'vote-status voted' : 'vote-status'}>
                         {participant.hasVoted ? 'Voted' : 'Not voted'}
@@ -463,8 +542,8 @@ export default function App() {
             </ul>
           </div>
 
-          {viewerRole === 'host' && !isEnded && (
-            <div className="room-management">
+          <div className="room-management">
+            {viewerRole === 'host' && !isEnded && (
               <button
                 type="button"
                 className="danger-button"
@@ -473,9 +552,19 @@ export default function App() {
               >
                 {isEndingRoom ? 'Ending room…' : 'End room'}
               </button>
-              <FormMessage error={endRoomError} />
-            </div>
-          )}
+            )}
+            {(viewerRole !== 'host' || isEnded) && (
+              <button
+                type="button"
+                className="leave-button"
+                onClick={handleLeaveRoom}
+                disabled={isLeavingRoom}
+              >
+                {isLeavingRoom ? 'Leaving room…' : 'Leave room'}
+              </button>
+            )}
+            <FormMessage error={endRoomError || leaveRoomError} />
+          </div>
         </section>
       </main>
     );
@@ -513,8 +602,8 @@ export default function App() {
               <input
                 id="host-name"
                 name="hostName"
-                value={hostName}
-                onChange={(event) => setHostName(event.target.value)}
+                value={displayName}
+                onChange={(event) => handleNameChange(event.target.value)}
                 autoComplete="name"
                 maxLength={60}
               />
@@ -555,8 +644,8 @@ export default function App() {
               <input
                 id="participant-name"
                 name="participantName"
-                value={participantName}
-                onChange={(event) => setParticipantName(event.target.value)}
+                value={displayName}
+                onChange={(event) => handleNameChange(event.target.value)}
                 autoComplete="name"
                 maxLength={60}
               />
@@ -599,6 +688,22 @@ function saveStoredSession(roomCode, participantToken) {
 
 function clearStoredSession() {
   sessionStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+function readStoredName() {
+  try {
+    return localStorage.getItem(NAME_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function saveStoredName(name) {
+  try {
+    localStorage.setItem(NAME_STORAGE_KEY, name);
+  } catch {
+    // The input still works when browser storage is unavailable.
+  }
 }
 
 function RoundHistory({ rounds }) {

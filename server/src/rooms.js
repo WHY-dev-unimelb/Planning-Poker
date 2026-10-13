@@ -128,6 +128,7 @@ export function createRoomStore({
     return {
       room: toPublicRoom(room),
       participantToken: host.token,
+      participantId: host.id,
     };
   }
 
@@ -147,6 +148,7 @@ export function createRoomStore({
     return {
       room: toPublicRoom(room),
       participantToken: participant.token,
+      participantId: participant.id,
     };
   }
 
@@ -167,6 +169,7 @@ export function createRoomStore({
     return {
       room: toPublicRoom(room),
       participantToken: participant.token,
+      participantId: participant.id,
       participantRole: participant.role,
       selectedVote: room.status === 'voting' ? room.votes.get(participant.id) ?? null : null,
     };
@@ -354,6 +357,36 @@ export function createRoomStore({
     return toPublicRoom(room);
   }
 
+  function leaveRoom(roomCode, participantToken) {
+    const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
+    const room = rooms.get(normalizedCode);
+    if (!room) {
+      throw new RoomNotFoundError('Room not found. Check the code and try again.');
+    }
+    expireRoomIfHostInactive(room);
+
+    const participantIndex = room.participants.findIndex(
+      (participant) => participant.token === participantToken,
+    );
+    if (participantIndex === -1) {
+      throw new RoomAuthorizationError('This participant session is no longer valid.');
+    }
+
+    const participant = room.participants[participantIndex];
+    if (participant.role === 'host') {
+      if (room.status !== 'ended') {
+        endRoomState(room, 'host-ended');
+      }
+      return toPublicRoom(room);
+    }
+
+    if (room.status !== 'ended') {
+      room.participants.splice(participantIndex, 1);
+      room.votes?.delete(participant.id);
+    }
+    return toPublicRoom(room);
+  }
+
   function toPublicRoom(room) {
     const publicRoom = {
       code: room.code,
@@ -395,6 +428,7 @@ export function createRoomStore({
     restartVoting,
     startNextStory,
     endRoom,
+    leaveRoom,
     getRoom(code, participantToken) {
       const normalizedCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
       const room = rooms.get(normalizedCode);

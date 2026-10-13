@@ -1,7 +1,7 @@
 # Slice 13 Test Plan: Host Explicitly Ends the Room
 
 - **Slice:** 13 — Host explicitly ends a room
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [Extended features vertical slices](../planning-poker-extended-features-vertical-slices.md#slice-13-host-explicitly-ends-a-room)
 
@@ -106,7 +106,7 @@ Executed on 13 October 2026:
 - Client production build: **passed**.
 - Host authorization, participant rejection, idempotency, and post-end action checks: **passed**.
 - Confirmation, cancellation, host terminal view, and participant polling checks: **passed**.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed; confirmed by the user on 13 October 2026**.
 
 ## Exit criteria
 

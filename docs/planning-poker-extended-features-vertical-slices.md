@@ -292,7 +292,7 @@ Users can copy the room code, identify their own participant row, leave delibera
 - **You** and **Host** are distinct badges; a host sees both.
 - Participant leave removes that participant and their active vote immediately.
 - Completed-round history remains unchanged after a participant leaves.
-- The host sees only the confirmed **End room** action; participants see **Leave room**.
+- While active, the host sees only the confirmed **End room** action; participants see **Leave room**. After ending, the host also sees **Leave room** so they can return home.
 - Leaving clears room credentials, returns home, and retains the display name.
 - The display name is shared across tabs through `localStorage`; room credentials remain tab-scoped in `sessionStorage`.
 - Rejoining after leaving creates a new participant identity.

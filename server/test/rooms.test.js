@@ -28,6 +28,7 @@ describe('room store', () => {
         ],
       },
       participantToken: 'private-token',
+      participantId: '123',
     });
     expect(store.getRoom('ABC123')).not.toHaveProperty('participants.0.token');
   });
@@ -122,6 +123,7 @@ describe('room store', () => {
     const restored = store.restoreSession('ABC123', 'participant-token');
 
     expect(restored.participantToken).toBe('participant-token');
+    expect(restored.participantId).toBe('456');
     expect(restored.participantRole).toBe('participant');
     expect(restored.selectedVote).toBe('8');
     expect(restored.room.participants).toEqual(
@@ -477,6 +479,60 @@ describe('room store', () => {
     expect(store.getRoom('ABC123')).toEqual(endedRoom);
     expect(() => store.submitVote('ABC123', 'participant-token', '5')).toThrow(
       RoomStateError,
+    );
+  });
+
+  it('removes a leaving participant and their active vote while preserving history', () => {
+    const ids = ['123', '456', '789'];
+    const tokens = ['host-token', 'participant-token', 'new-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+    store.submitVote('ABC123', 'participant-token', '8');
+    store.revealRound('ABC123', 'host-token');
+    store.restartVoting('ABC123', 'host-token');
+    store.submitVote('ABC123', 'participant-token', '13');
+
+    const room = store.leaveRoom('ABC123', 'participant-token');
+
+    expect(room.participants).toEqual([
+      expect.objectContaining({ id: '123', role: 'host', hasVoted: false }),
+    ]);
+    expect(room.history[0].participants).toContainEqual(
+      expect.objectContaining({ id: '456', label: 'Sam #456', vote: '8' }),
+    );
+    expect(() => store.restoreSession('ABC123', 'participant-token')).toThrow(
+      RoomAuthorizationError,
+    );
+    const rejoined = store.joinRoom('ABC123', 'Sam');
+    expect(rejoined.participantId).toBe('789');
+    expect(rejoined.participantToken).toBe('new-token');
+    expect(rejoined.room.participants.at(-1)).toEqual(
+      expect.objectContaining({ label: 'Sam #789', hasVoted: false }),
+    );
+  });
+
+  it('ends the room immediately when the host leaves', () => {
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'host-token',
+    });
+    store.createRoom('Alex');
+
+    expect(store.leaveRoom('ABC123', 'host-token')).toEqual(expect.objectContaining({
+      status: 'ended',
+      endedReason: 'host-ended',
+      endedMessage: 'The host ended this room.',
+    }));
+    expect(() => store.leaveRoom('MISSING', 'host-token')).toThrow(RoomNotFoundError);
+    expect(() => store.leaveRoom('ABC123', 'invalid-token')).toThrow(
+      RoomAuthorizationError,
     );
   });
 });
