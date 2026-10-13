@@ -12,12 +12,13 @@ function successfulResponse(data) {
 
 function roomSession(participants = [
   { id: '123', name: 'Alex', label: 'Alex #123', role: 'host' },
-]) {
+], roomOverrides = {}) {
   return {
     room: {
       code: 'ABC123',
       status: 'lobby',
       participants,
+      ...roomOverrides,
     },
     participantToken: 'private-token',
   };
@@ -138,5 +139,87 @@ describe('lobby synchronization', () => {
     view.unmount();
 
     expect(clearIntervalSpy).toHaveBeenCalled();
+  });
+});
+
+describe('starting the first story', () => {
+  it('lets the host add a story and enter voting', async () => {
+    const user = userEvent.setup();
+    const votingRoom = roomSession(undefined, {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    }).room;
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: votingRoom }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.type(await screen.findByLabelText('Story'), '  Estimate login flow  ');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/rooms/ABC123/story',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer private-token' }),
+        body: JSON.stringify({ storyText: 'Estimate login flow' }),
+      }),
+    );
+    expect(await screen.findByRole('heading', { name: 'Voting has started' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Estimate login flow' })).toBeVisible();
+  });
+
+  it('does not show story controls to a participant in the lobby', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse(roomSession()));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+
+    expect(await screen.findByText('Waiting for the host to add the first story.')).toBeVisible();
+    expect(screen.queryByLabelText('Story')).not.toBeInTheDocument();
+  });
+
+  it('shows a participant the story after polling', async () => {
+    const user = userEvent.setup();
+    const votingRoom = roomSession(undefined, {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    }).room;
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValue(successfulResponse({ room: votingRoom }));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Join a room' }));
+    await user.type(screen.getByLabelText('Room code'), 'ABC123');
+    await user.type(screen.getByLabelText('Your name'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Join room' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Estimate login flow' }, { timeout: 2500 }),
+    ).toBeVisible();
+  });
+
+  it('rejects a blank story before calling the API', async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(successfulResponse(roomSession()));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.type(await screen.findByLabelText('Story'), '   ');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a story to start voting.');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

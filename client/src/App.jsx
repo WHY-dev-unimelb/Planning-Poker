@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createRoom, getRoom, joinRoom } from './api.js';
+import { addStory, createRoom, getRoom, joinRoom } from './api.js';
 
 const POLLING_INTERVAL_MS = 1000;
 
@@ -9,9 +9,13 @@ export default function App() {
   const [participantName, setParticipantName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [roomSession, setRoomSession] = useState(null);
+  const [viewerRole, setViewerRole] = useState(null);
   const [entryMessage, setEntryMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [storyText, setStoryText] = useState('');
+  const [storyError, setStoryError] = useState('');
+  const [isStartingStory, setIsStartingStory] = useState(false);
 
   useEffect(() => {
     if (!roomSession) {
@@ -41,12 +45,13 @@ export default function App() {
     setError('');
   }
 
-  async function submit(action) {
+  async function submit(action, role) {
     setError('');
     setIsSubmitting(true);
     try {
       const session = await action();
       setRoomSession(session);
+      setViewerRole(role);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -63,7 +68,7 @@ export default function App() {
     }
 
     setEntryMessage('Room created');
-    await submit(() => createRoom(trimmedName));
+    await submit(() => createRoom(trimmedName), 'host');
   }
 
   async function handleJoin(event) {
@@ -80,19 +85,70 @@ export default function App() {
     }
 
     setEntryMessage('Room joined');
-    await submit(() => joinRoom(normalizedCode, trimmedName));
+    await submit(() => joinRoom(normalizedCode, trimmedName), 'participant');
+  }
+
+  async function handleAddStory(event) {
+    event.preventDefault();
+    const normalizedStory = storyText.trim();
+    if (!normalizedStory) {
+      setStoryError('Enter a story to start voting.');
+      return;
+    }
+
+    setStoryError('');
+    setIsStartingStory(true);
+    try {
+      const latest = await addStory(
+        roomSession.room.code,
+        roomSession.participantToken,
+        normalizedStory,
+      );
+      setRoomSession((current) => ({ ...current, room: latest.room }));
+    } catch (requestError) {
+      setStoryError(requestError.message);
+    } finally {
+      setIsStartingStory(false);
+    }
   }
 
   if (roomSession) {
+    const isVoting = roomSession.room.status === 'voting';
     return (
       <main className="page-shell">
-        <section className="panel" aria-labelledby="lobby-heading">
-          <p className="eyebrow">{entryMessage}</p>
-          <h1 id="lobby-heading">Planning Poker lobby</h1>
+        <section className="panel" aria-labelledby="room-heading">
+          <p className="eyebrow">{isVoting ? 'Voting' : entryMessage}</p>
+          <h1 id="room-heading">{isVoting ? 'Voting has started' : 'Planning Poker lobby'}</h1>
           <p className="room-code-label">Room code</p>
           <p className="room-code" aria-label={`Room code ${roomSession.room.code}`}>
             {roomSession.room.code}
           </p>
+
+          {isVoting ? (
+            <div className="story-section">
+              <p className="section-label">Current story</p>
+              <h2>{roomSession.room.currentStory.text}</h2>
+              <p className="supporting-text">Card selection is added in the next slice.</p>
+            </div>
+          ) : viewerRole === 'host' ? (
+            <form className="story-form" onSubmit={handleAddStory} noValidate>
+              <label htmlFor="story-text">Story</label>
+              <textarea
+                id="story-text"
+                name="storyText"
+                value={storyText}
+                onChange={(event) => setStoryText(event.target.value)}
+                maxLength={500}
+                rows={4}
+              />
+              <FormMessage error={storyError} />
+              <button type="submit" disabled={isStartingStory}>
+                {isStartingStory ? 'Starting voting…' : 'Add story and start voting'}
+              </button>
+            </form>
+          ) : (
+            <p className="waiting-message">Waiting for the host to add the first story.</p>
+          )}
 
           <div className="lobby-section">
             <h2>Participants</h2>

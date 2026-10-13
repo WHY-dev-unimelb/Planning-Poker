@@ -19,7 +19,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -105,16 +106,22 @@ label {
   font-weight: 700;
 }
 
-input {
+input,
+textarea {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid #aebbd0;
   border-radius: 9px;
 }
 
-input:focus {
+input:focus,
+textarea:focus {
   border-color: #3157d5;
   outline: 3px solid rgb(49 87 213 / 18%);
+}
+
+textarea {
+  resize: vertical;
 }
 
 button {
@@ -154,6 +161,38 @@ button:disabled {
 .lobby-section {
   padding-top: 22px;
   border-top: 1px solid #e3e8f1;
+}
+
+.story-form,
+.story-section,
+.waiting-message {
+  margin: 0 0 24px;
+}
+
+.story-section {
+  padding: 18px;
+  border-radius: 12px;
+  background: #f3f6fb;
+}
+
+.story-section h2 {
+  margin-bottom: 8px;
+}
+
+.section-label {
+  margin-bottom: 6px;
+  color: #526581;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.waiting-message {
+  padding: 14px;
+  border-radius: 9px;
+  color: #526581;
+  background: #f3f6fb;
 }
 
 .participant-list {

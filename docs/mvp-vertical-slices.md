@@ -51,7 +51,7 @@ A host enters a display name, creates a room, and reaches an empty lobby with a 
 
 ## Slice 2: Participants join and the lobby synchronizes
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -84,6 +84,8 @@ A participant joins with a room code and display name, and all open clients see 
 - Manual check: open three browser windows, join twice with the same name, and verify distinct identifiers.
 
 ## Slice 3: Host adds the first story
+
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 

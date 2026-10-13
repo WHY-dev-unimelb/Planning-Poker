@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   createRoomStore,
+  RoomAuthorizationError,
   RoomNotFoundError,
+  RoomStateError,
   RoomValidationError,
 } from '../src/rooms.js';
 
@@ -79,6 +81,52 @@ describe('room store', () => {
     const store = createRoomStore();
 
     expect(() => store.joinRoom('MISSING', 'Alex')).toThrow(RoomNotFoundError);
+  });
+
+  it('lets the host add a trimmed story and starts voting', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+
+    const room = store.addStory('ABC123', 'host-token', '  Estimate login flow  ');
+    const lateJoin = store.joinRoom('ABC123', 'Sam');
+
+    expect(room.status).toBe('voting');
+    expect(room.currentStory).toEqual({ text: 'Estimate login flow' });
+    expect(lateJoin.room.currentStory).toEqual({ text: 'Estimate login flow' });
+  });
+
+  it('prevents a participant from adding a story', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+
+    expect(() => store.addStory('ABC123', 'participant-token', 'A story')).toThrow(
+      RoomAuthorizationError,
+    );
+  });
+
+  it('does not replace an active story', () => {
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'host-token',
+    });
+    store.createRoom('Alex');
+    store.addStory('ABC123', 'host-token', 'First story');
+
+    expect(() => store.addStory('ABC123', 'host-token', 'Second story')).toThrow(RoomStateError);
   });
 });
 

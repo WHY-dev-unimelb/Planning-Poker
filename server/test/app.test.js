@@ -87,3 +87,59 @@ describe('room participation endpoints', () => {
   });
 });
 
+describe('POST /api/rooms/:roomCode/story', () => {
+  it('lets the host add a story and starts voting', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: '  Estimate login flow  ' })
+      .expect(201);
+
+    expect(response.body.room).toEqual({
+      code: 'ABC123',
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+      participants: [
+        { id: '123', name: 'Alex', label: 'Alex #123', role: 'host' },
+      ],
+    });
+  });
+
+  it('forbids participant and invalid tokens', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .send({ storyText: 'A story' })
+      .expect(403);
+
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer invalid-token')
+      .send({ storyText: 'A story' })
+      .expect(403);
+  });
+
+  it('rejects a blank story', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: '   ' })
+      .expect(400);
+
+    expect(response.body).toEqual({ error: 'Enter a story to start voting.' });
+  });
+});
+

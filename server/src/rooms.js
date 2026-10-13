@@ -6,6 +6,8 @@ const MAX_GENERATION_ATTEMPTS = 100;
 
 export class RoomValidationError extends Error {}
 export class RoomNotFoundError extends Error {}
+export class RoomAuthorizationError extends Error {}
+export class RoomStateError extends Error {}
 
 export function generateRoomCode() {
   return Array.from(
@@ -98,17 +100,50 @@ export function createRoomStore({
     };
   }
 
+  function addStory(roomCode, participantToken, storyText) {
+    const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
+    const room = rooms.get(normalizedCode);
+    if (!room) {
+      throw new RoomNotFoundError('Room not found. Check the code and try again.');
+    }
+
+    const host = room.participants.find(
+      (participant) => participant.token === participantToken && participant.role === 'host',
+    );
+    if (!host) {
+      throw new RoomAuthorizationError('Only the host can add a story.');
+    }
+
+    if (room.status !== 'lobby') {
+      throw new RoomStateError('A story is already active.');
+    }
+
+    const normalizedStory = typeof storyText === 'string' ? storyText.trim() : '';
+    if (!normalizedStory) {
+      throw new RoomValidationError('Enter a story to start voting.');
+    }
+
+    room.currentStory = { text: normalizedStory };
+    room.status = 'voting';
+    return toPublicRoom(room);
+  }
+
   function toPublicRoom(room) {
-    return {
+    const publicRoom = {
       code: room.code,
       status: room.status,
       participants: room.participants.map(({ token: _token, ...participant }) => participant),
     };
+    if (room.currentStory) {
+      publicRoom.currentStory = { ...room.currentStory };
+    }
+    return publicRoom;
   }
 
   return {
     createRoom,
     joinRoom,
+    addStory,
     getRoom(code) {
       const normalizedCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
       const room = rooms.get(normalizedCode);

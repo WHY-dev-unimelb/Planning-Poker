@@ -1,7 +1,7 @@
 # Slice 2 Test Plan: Participants Join and the Lobby Synchronizes
 
 - **Slice:** 2 — Participants join and the lobby synchronizes
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [MVP vertical slices](../mvp-vertical-slices.md#slice-2-participants-join-and-the-lobby-synchronizes)
 
@@ -151,7 +151,7 @@ Executed on 13 October 2026:
 - Client production build: **passed**.
 - Live API duplicate-name test: **passed** with three distinct identifiers.
 - Live API token test: **passed**; join tokens were issued and public state contained no token.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed**, confirmed by the user on 13 October 2026.
 
 ## Exit criteria
 

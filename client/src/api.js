@@ -34,3 +34,16 @@ export async function getRoom(roomCode) {
   return readResponse(await fetch(`/api/rooms/${encodeURIComponent(roomCode)}`));
 }
 
+export async function addStory(roomCode, participantToken, storyText) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/story`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${participantToken}`,
+      },
+      body: JSON.stringify({ storyText }),
+    }),
+  );
+}
+
