@@ -138,3 +138,22 @@
 
 There are no blocking product decisions for the vertical slices. Early-reveal confirmation and explicit room-ending behavior are deferred until after the MVP.
 
+## 9. Extended preset decks
+
+### Decision
+
+- Slice 8 adds three room-level deck presets:
+  - Fibonacci: `1, 2, 3, 5, 8, 13, 21, ?`
+  - T-shirt: `XS, S, M, L, XL, ?`
+  - Powers of two: `1, 2, 4, 8, 16, 32, ?`
+- The host selects the preset while creating the room.
+- Fibonacci remains the default.
+- A room uses the selected deck for every story and revote.
+
+### Consequences
+
+- The server validates estimates against the room's selected deck rather than one global deck.
+- Participants cannot change the deck.
+- The selected deck cannot change after room creation.
+- Hidden-vote and reveal behavior remain identical for every preset.
+

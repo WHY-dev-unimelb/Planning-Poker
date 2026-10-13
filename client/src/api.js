@@ -6,14 +6,14 @@ async function readResponse(response) {
   return data;
 }
 
-export async function createRoom(hostName) {
+export async function createRoom(hostName, deckPreset) {
   return readResponse(
     await fetch('/api/rooms', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ hostName }),
+      body: JSON.stringify({ hostName, deckPreset }),
     }),
   );
 }

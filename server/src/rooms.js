@@ -3,7 +3,12 @@ import { randomInt, randomUUID } from 'node:crypto';
 const ROOM_CODE_CHARACTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 const MAX_GENERATION_ATTEMPTS = 100;
-export const PLANNING_POKER_DECK = Object.freeze(['1', '2', '3', '5', '8', '13', '21', '?']);
+export const DECK_PRESETS = Object.freeze({
+  fibonacci: Object.freeze(['1', '2', '3', '5', '8', '13', '21', '?']),
+  tshirt: Object.freeze(['XS', 'S', 'M', 'L', 'XL', '?']),
+  'powers-of-two': Object.freeze(['1', '2', '4', '8', '16', '32', '?']),
+});
+export const PLANNING_POKER_DECK = DECK_PRESETS.fibonacci;
 
 export class RoomValidationError extends Error {}
 export class RoomNotFoundError extends Error {}
@@ -53,8 +58,11 @@ export function createRoomStore({
     };
   }
 
-  function createRoom(hostName) {
+  function createRoom(hostName, deckPreset = 'fibonacci') {
     const normalizedName = normalizeName(hostName, 'create');
+    if (typeof deckPreset !== 'string' || !Object.hasOwn(DECK_PRESETS, deckPreset)) {
+      throw new RoomValidationError('Choose a supported deck preset.');
+    }
 
     let code;
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
@@ -74,6 +82,7 @@ export function createRoomStore({
     const room = {
       code,
       status: 'lobby',
+      deckPreset,
       participants: [host],
     };
     rooms.set(code, room);
@@ -146,8 +155,8 @@ export function createRoomStore({
       throw new RoomStateError('Voting is not active.');
     }
 
-    if (typeof value !== 'string' || !PLANNING_POKER_DECK.includes(value)) {
-      throw new RoomValidationError('Choose a card from the Planning Poker deck.');
+    if (typeof value !== 'string' || !DECK_PRESETS[room.deckPreset].includes(value)) {
+      throw new RoomValidationError('Choose a card from this room\'s deck.');
     }
 
     room.votes.set(participant.id, value);
@@ -245,7 +254,7 @@ export function createRoomStore({
     };
     if (room.currentStory) {
       publicRoom.currentStory = { ...room.currentStory };
-      publicRoom.deck = [...PLANNING_POKER_DECK];
+      publicRoom.deck = [...DECK_PRESETS[room.deckPreset]];
     }
     return publicRoom;
   }

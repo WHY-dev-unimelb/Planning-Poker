@@ -18,7 +18,7 @@ export function createApp({ roomStore = createRoomStore() } = {}) {
 
   app.post('/api/rooms', (request, response) => {
     try {
-      const session = roomStore.createRoom(request.body?.hostName);
+      const session = roomStore.createRoom(request.body?.hostName, request.body?.deckPreset);
       response.status(201).json(session);
     } catch (error) {
       if (error instanceof RoomValidationError) {

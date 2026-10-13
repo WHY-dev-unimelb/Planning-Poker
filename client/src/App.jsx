@@ -11,10 +11,16 @@ import {
 } from './api.js';
 
 const POLLING_INTERVAL_MS = 1000;
+const DECK_PRESET_OPTIONS = [
+  { value: 'fibonacci', label: 'Fibonacci — 1, 2, 3, 5, 8, 13, 21, ?' },
+  { value: 'tshirt', label: 'T-shirt — XS, S, M, L, XL, ?' },
+  { value: 'powers-of-two', label: 'Powers of two — 1, 2, 4, 8, 16, 32, ?' },
+];
 
 export default function App() {
   const [mode, setMode] = useState('create');
   const [hostName, setHostName] = useState('');
+  const [deckPreset, setDeckPreset] = useState('fibonacci');
   const [participantName, setParticipantName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [roomSession, setRoomSession] = useState(null);
@@ -49,7 +55,7 @@ export default function App() {
           setRoomSession((current) => ({ ...current, room: latest.room }));
         }
       } catch {
-        // Slice 8 adds persistent room-unavailable feedback. Keep the last good lobby for now.
+        // Keep the last good room state until unavailable-room handling is implemented.
       }
     }, POLLING_INTERVAL_MS);
 
@@ -93,7 +99,7 @@ export default function App() {
     }
 
     setEntryMessage('Room created');
-    await submit(() => createRoom(trimmedName), 'host');
+    await submit(() => createRoom(trimmedName, deckPreset), 'host');
   }
 
   async function handleJoin(event) {
@@ -393,6 +399,19 @@ export default function App() {
                 autoComplete="name"
                 maxLength={60}
               />
+              <label htmlFor="deck-preset">Estimation deck</label>
+              <select
+                id="deck-preset"
+                name="deckPreset"
+                value={deckPreset}
+                onChange={(event) => setDeckPreset(event.target.value)}
+              >
+                {DECK_PRESET_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
               <FormMessage error={error} />
               <button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Creating room…' : 'Create room'}

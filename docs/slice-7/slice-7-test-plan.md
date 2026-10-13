@@ -1,7 +1,7 @@
 # Slice 7 Test Plan: Host Moves to the Next Story
 
 - **Slice:** 7 — Host moves to the next story
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [MVP vertical slices](../mvp-vertical-slices.md#slice-7-host-moves-to-the-next-story)
 
@@ -153,7 +153,7 @@ Executed on 13 October 2026:
 - Client production build: **passed**.
 - Server next-story transition, clearing, validation, state, and authorization checks: **passed**.
 - Client story replacement, clean voting state, participant control visibility, and blank validation checks: **passed**.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed; confirmed by the user on 13 October 2026**.
 
 ## Exit criteria
 

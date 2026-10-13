@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createRoomStore,
+  DECK_PRESETS,
   PLANNING_POKER_DECK,
   RoomAuthorizationError,
   RoomNotFoundError,
@@ -35,6 +36,26 @@ describe('room store', () => {
     const store = createRoomStore();
 
     expect(() => store.createRoom('   ')).toThrow(RoomValidationError);
+  });
+
+  it('uses the selected deck preset for voting and rejects unknown presets', () => {
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => '123',
+      tokenGenerator: () => 'host-token',
+    });
+
+    store.createRoom('Alex', 'tshirt');
+    const room = store.addStory('ABC123', 'host-token', 'Estimate visual polish');
+
+    expect(room.deck).toEqual(DECK_PRESETS.tshirt);
+    expect(store.submitVote('ABC123', 'host-token', 'XL').selectedVote).toBe('XL');
+    expect(() => store.submitVote('ABC123', 'host-token', '13')).toThrow(
+      RoomValidationError,
+    );
+
+    const invalidStore = createRoomStore();
+    expect(() => invalidStore.createRoom('Sam', 'unknown')).toThrow(RoomValidationError);
   });
 
   it('retries when a generated room code already exists', () => {

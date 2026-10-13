@@ -51,7 +51,7 @@ describe('room entry', () => {
       '/api/rooms',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ hostName: 'Alex' }),
+        body: JSON.stringify({ hostName: 'Alex', deckPreset: 'fibonacci' }),
       }),
     );
     expect(await screen.findByRole('heading', { name: 'Planning Poker lobby' })).toBeVisible();
@@ -70,6 +70,36 @@ describe('room entry', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Enter your name to create a room.');
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('lets the host choose a deck preset that is used for voting', async () => {
+    const user = userEvent.setup();
+    const tshirtVotingRoom = roomSession(undefined, {
+      status: 'voting',
+      currentStory: { text: 'Estimate visual polish' },
+      deck: ['XS', 'S', 'M', 'L', 'XL', '?'],
+    }).room;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: tshirtVotingRoom }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.selectOptions(screen.getByLabelText('Estimation deck'), 'tshirt');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.type(await screen.findByLabelText('Story'), 'Estimate visual polish');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      1,
+      '/api/rooms',
+      expect.objectContaining({
+        body: JSON.stringify({ hostName: 'Alex', deckPreset: 'tshirt' }),
+      }),
+    );
+    expect(await screen.findByRole('button', { name: 'XS' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'XL' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '13' })).not.toBeInTheDocument();
   });
 
   it('joins a room using an uppercase normalized code', async () => {

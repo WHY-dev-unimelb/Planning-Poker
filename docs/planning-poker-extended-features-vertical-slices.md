@@ -10,10 +10,10 @@
 
 Use the remaining assignment time to add one demonstrable extension without weakening the tested MVP. Each extension remains a small vertical slice with a user-visible outcome, server rules, API behavior, client behavior, and focused tests.
 
-With approximately two hours remaining, the recommended sequence is:
+With approximately two hours remaining, the current sequence is:
 
 1. Complete the MVP handoff gate in the [MVP plan](./mvp-vertical-slices.md#mvp-handoff-gate-reviewer-can-run-and-verify-the-mvp), especially the README and clean-run instructions.
-2. Implement Slice 8 only.
+2. Complete Slice 8 manual acceptance.
 3. Begin Slice 9 only if Slice 8 is accepted and enough time remains for automated and manual verification.
 
 Do not begin history, reconnection, or presence work during the assignment unless the earlier work is complete. Those features change room data ownership and lifecycle rules and are more likely to leave the application partially working.
@@ -29,7 +29,7 @@ Do not begin history, reconnection, or presence work during the assignment unles
 
 ## Slice 8: Host chooses a preset deck
 
-**Status:** Recommended next extension; exact preset list requires confirmation before implementation.
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 
@@ -66,9 +66,9 @@ Before starting the first story, the host chooses from a small list of deck pres
 - React test: choosing a preset changes the cards shown when voting starts.
 - Manual check: create two rooms with different presets and verify each room's participants see the correct cards.
 
-### Open decision before implementation
+### Selected presets
 
-Confirm the preset names and exact card values. A small, sensible set is:
+Confirmed on 13 October 2026:
 
 - Fibonacci: `1, 2, 3, 5, 8, 13, 21, ?`
 - T-shirt: `XS, S, M, L, XL, ?`
@@ -266,7 +266,7 @@ The host explicitly ends a room and every participant sees that the session has 
 
 | Priority | Slice | Value | Delivery risk | Recommendation |
 | --- | --- | --- | --- | --- |
-| 1 | 8 — Preset decks | High and visible | Low–medium | Implement after the MVP handoff gate |
+| 1 | 8 — Preset decks | High and visible | Low–medium | Implemented; complete manual acceptance |
 | 2 | 9 — Custom deck | High but validation-heavy | Medium | Attempt only if Slice 8 is accepted early |
 | 3 | 10 — Round history | Useful facilitation record | Medium–high | Defer beyond the assignment |
 | 4 | 11 — Session rejoin | Strong reliability benefit | High | Defer; privacy-sensitive |

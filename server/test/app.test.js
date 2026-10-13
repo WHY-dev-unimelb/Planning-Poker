@@ -42,6 +42,27 @@ describe('POST /api/rooms', () => {
 
     expect(response.body).toEqual({ error: 'Enter your name to create a room.' });
   });
+
+  it('creates a room with a supported preset and rejects an unknown preset', async () => {
+    const app = createTestApplication();
+    await request(app)
+      .post('/api/rooms')
+      .send({ hostName: 'Alex', deckPreset: 'powers-of-two' })
+      .expect(201);
+    const votingResponse = await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate reports' })
+      .expect(201);
+
+    expect(votingResponse.body.room.deck).toEqual(['1', '2', '4', '8', '16', '32', '?']);
+
+    const invalidResponse = await request(createTestApplication())
+      .post('/api/rooms')
+      .send({ hostName: 'Sam', deckPreset: 'unknown' })
+      .expect(400);
+    expect(invalidResponse.body).toEqual({ error: 'Choose a supported deck preset.' });
+  });
 });
 
 describe('room participation endpoints', () => {
@@ -194,7 +215,7 @@ describe('PUT /api/rooms/:roomCode/vote', () => {
       .send({ value: '100' })
       .expect(400);
 
-    expect(response.body).toEqual({ error: 'Choose a card from the Planning Poker deck.' });
+    expect(response.body).toEqual({ error: 'Choose a card from this room\'s deck.' });
   });
 
   it('rejects an invalid participant token', async () => {
