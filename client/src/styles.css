@@ -68,10 +68,37 @@ h2 {
   color: #526581;
 }
 
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 26px;
+  border-radius: 11px;
+  background: #edf1f7;
+}
+
+.mode-button {
+  margin: 0;
+  padding: 9px 12px;
+  color: #526581;
+  background: transparent;
+}
+
+.mode-button[aria-pressed='true'] {
+  color: #2444a5;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgb(37 54 84 / 10%);
+}
+
 form {
   display: grid;
   gap: 10px;
   margin-top: 28px;
+}
+
+form label:not(:first-child) {
+  margin-top: 8px;
 }
 
 label {

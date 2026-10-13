@@ -5,6 +5,7 @@ const ROOM_CODE_LENGTH = 6;
 const MAX_GENERATION_ATTEMPTS = 100;
 
 export class RoomValidationError extends Error {}
+export class RoomNotFoundError extends Error {}
 
 export function generateRoomCode() {
   return Array.from(
@@ -20,11 +21,37 @@ export function createRoomStore({
 } = {}) {
   const rooms = new Map();
 
-  function createRoom(hostName) {
-    const normalizedName = typeof hostName === 'string' ? hostName.trim() : '';
+  function normalizeName(name, action) {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
     if (!normalizedName) {
-      throw new RoomValidationError('Enter your name to create a room.');
+      throw new RoomValidationError(`Enter your name to ${action} a room.`);
     }
+    return normalizedName;
+  }
+
+  function generateUniqueParticipantId(participants) {
+    for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
+      const candidate = idGenerator();
+      if (!participants.some((participant) => participant.id === candidate)) {
+        return candidate;
+      }
+    }
+    throw new Error('Unable to generate a unique participant identifier.');
+  }
+
+  function createParticipant(participants, name, role) {
+    const id = generateUniqueParticipantId(participants);
+    return {
+      id,
+      name,
+      label: `${name} #${id}`,
+      role,
+      token: tokenGenerator(),
+    };
+  }
+
+  function createRoom(hostName) {
+    const normalizedName = normalizeName(hostName, 'create');
 
     let code;
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
@@ -39,15 +66,7 @@ export function createRoomStore({
       throw new Error('Unable to generate a unique room code.');
     }
 
-    const participantId = idGenerator();
-    const participantToken = tokenGenerator();
-    const host = {
-      id: participantId,
-      name: normalizedName,
-      label: `${normalizedName} #${participantId}`,
-      role: 'host',
-      token: participantToken,
-    };
+    const host = createParticipant([], normalizedName, 'host');
 
     const room = {
       code,
@@ -58,7 +77,24 @@ export function createRoomStore({
 
     return {
       room: toPublicRoom(room),
-      participantToken,
+      participantToken: host.token,
+    };
+  }
+
+  function joinRoom(roomCode, participantName) {
+    const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
+    const room = rooms.get(normalizedCode);
+    if (!room) {
+      throw new RoomNotFoundError('Room not found. Check the code and try again.');
+    }
+
+    const normalizedName = normalizeName(participantName, 'join');
+    const participant = createParticipant(room.participants, normalizedName, 'participant');
+    room.participants.push(participant);
+
+    return {
+      room: toPublicRoom(room),
+      participantToken: participant.token,
     };
   }
 
@@ -72,8 +108,10 @@ export function createRoomStore({
 
   return {
     createRoom,
+    joinRoom,
     getRoom(code) {
-      const room = rooms.get(code);
+      const normalizedCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
+      const room = rooms.get(normalizedCode);
       return room ? toPublicRoom(room) : undefined;
     },
     get size() {

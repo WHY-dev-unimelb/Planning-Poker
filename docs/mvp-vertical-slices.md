@@ -18,6 +18,8 @@ The file paths below describe likely areas rather than a mandatory final structu
 
 ## Slice 1: Host creates a room
 
+**Status:** Accepted; automated and manual checks passed.
+
 ### Testable user outcome
 
 A host enters a display name, creates a room, and reaches an empty lobby with a shareable room code and a generated identity such as `Alex #123`.
@@ -48,6 +50,8 @@ A host enters a display name, creates a room, and reaches an empty lobby with a 
 - Manual check: create two rooms and confirm their codes differ.
 
 ## Slice 2: Participants join and the lobby synchronizes
+
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createRoomStore, RoomValidationError } from '../src/rooms.js';
+import {
+  createRoomStore,
+  RoomNotFoundError,
+  RoomValidationError,
+} from '../src/rooms.js';
 
 describe('room store', () => {
   it('creates a lobby with a trimmed host name and private token', () => {
@@ -44,6 +48,37 @@ describe('room store', () => {
     expect(firstRoom.room.code).toBe('ABC123');
     expect(secondRoom.room.code).toBe('XYZ789');
     expect(store.size).toBe(2);
+  });
+
+  it('allows duplicate names while assigning unique identifiers and tokens', () => {
+    const ids = ['123', '123', '456', '789'];
+    const tokens = ['host-token', 'first-token', 'second-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+
+    const firstJoin = store.joinRoom('abc123', 'Alex');
+    const secondJoin = store.joinRoom('ABC123', 'Alex');
+
+    expect(firstJoin.participantToken).toBe('first-token');
+    expect(secondJoin.participantToken).toBe('second-token');
+    expect(secondJoin.room.participants.map((participant) => participant.label)).toEqual([
+      'Alex #123',
+      'Alex #456',
+      'Alex #789',
+    ]);
+    expect(store.getRoom('ABC123').participants).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ token: expect.anything() })]),
+    );
+  });
+
+  it('rejects joining a room that does not exist', () => {
+    const store = createRoomStore();
+
+    expect(() => store.joinRoom('MISSING', 'Alex')).toThrow(RoomNotFoundError);
   });
 });
 

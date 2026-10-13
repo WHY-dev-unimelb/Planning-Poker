@@ -1,7 +1,7 @@
 # Slice 1 Test Plan: Host Creates a Room
 
 - **Slice:** 1 — Host creates a room
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [MVP vertical slices](./mvp-vertical-slices.md#slice-1-host-creates-a-room)
 
@@ -143,7 +143,7 @@ Executed on 13 October 2026:
 - Client automated tests: **2 passed**.
 - Client production build: **passed**.
 - Live API smoke test: **passed**; two rooms received different codes, and the first room returned lobby status with an `Alex #NNN` host label.
-- Manual browser procedure: **not executed in the automated environment** because its in-app browser blocks localhost pages. The steps above remain the final human-visible acceptance check.
+- Manual browser procedure: **passed**, confirmed by the user on 13 October 2026.
 
 ## Exit criteria
 
