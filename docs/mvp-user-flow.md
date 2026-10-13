@@ -11,13 +11,12 @@ Support a small team through a lobby-first Planning Poker session: gather partic
 ## 1. Create the room
 
 1. The host provides a display name.
-2. The host selects a built-in deck preset or defines a custom deck.
-3. The host creates the room.
-4. The system generates:
+2. The host creates the room using the fixed Fibonacci-style deck.
+3. The system generates:
    - a short room code; and
    - the host's participant identity, such as `Alex #123`.
-5. The room enters the lobby state.
-6. The host shares the room code with participants.
+4. The room enters the lobby state.
+5. The host shares the room code with participants.
 
 ## 2. Join the lobby
 
@@ -28,12 +27,14 @@ Support a small team through a lobby-first Planning Poker session: gather partic
 5. Everyone in the room can see the current participant list.
 6. Duplicate display names are allowed because the generated identifiers distinguish participants.
 
+Participants may also join while an unrevealed round is active. A late participant sees the current story and may vote in that round.
+
 ## 3. Add the first story
 
 1. The host waits until the intended participants have joined.
 2. The host enters the story to be estimated.
 3. Adding the story starts its first voting round.
-4. Participants can see the current story and the room's selected deck.
+4. Participants can see the current story and the fixed deck.
 
 There is no separate ready-check or “open voting” step in the MVP.
 
@@ -50,7 +51,7 @@ There is no separate ready-check or “open voting” step in the MVP.
 2. Participants can no longer change their votes for that round.
 3. The system shows each participant's revealed estimate.
 4. Participants who did not vote are shown as having no vote.
-5. The revealed result is appended to the room's complete round history.
+5. The revealed result remains visible until the host starts a revote or moves to the next story.
 
 Only the host can reveal. Reveal is not automatic.
 
@@ -60,52 +61,41 @@ After reviewing the revealed estimates, the host chooses one of two paths.
 
 ### Revote
 
-1. The revealed round remains in history.
+1. The previous revealed result is discarded.
 2. The current story remains active.
-3. Previous active votes are cleared.
-4. A new round number is assigned to the story.
-5. Participants vote again using the same flow.
+3. Previous votes are cleared.
+4. Participants vote again using the same flow.
 
 ### Next story
 
-1. The revealed round remains in history.
+1. The previous revealed result is discarded.
 2. The previous story is no longer active.
 3. The host enters the next story.
-4. Adding it starts the new story's first voting round.
+4. Adding it starts the new story's voting round.
 5. Participants vote again using the same flow.
 
-## 7. Rejoin or end the room
+## 7. Disconnection and room lifetime
 
-### Participant reconnects
+### Participant joins again
 
 1. The participant uses the same room code and display name.
-2. When the same browser retains the generated participant identity, the system restores that identity.
-3. Without the retained identity, the participant joins as a new participant with a new numeric identifier.
+2. The system treats them as a new participant and assigns a new numeric identifier.
+3. Previous identity and vote recovery are not part of the MVP.
 
-Whether an unrevealed vote is restored remains an open product detail.
+### Room lifetime
 
-### Host disconnects
-
-1. The system detects that the host has disconnected.
-2. The room ends after the configured disconnection rule is satisfied.
-3. Participants are informed that the host disconnected and the room ended.
-4. The room and its complete round history are removed from memory.
-
-The exact grace period before ending the room remains an open product detail.
+1. The MVP does not detect host disconnection or maintain precise presence.
+2. A room remains in server memory after a browser closes or refreshes.
+3. Restarting the server removes every room.
 
 ## Session states
 
-The flow requires four product states:
+The flow requires three active product states:
 
 1. **Lobby:** the room exists and participants can assemble, but no story is active.
 2. **Voting:** a story is active and estimates remain hidden.
 3. **Revealed:** estimates are visible and the host can select Revote or Next story.
-4. **Ended:** the host disconnected or the server restarted, so the room is no longer available.
 
 ## Unresolved flow details
 
-- Whether participants may join after voting has started.
-- Whether a returning participant recovers an unrevealed vote.
-- Whether revealing early requires confirmation.
-- How long the host-disconnection grace period lasts.
-- Where session history is presented; its contents and lifetime are already decided.
+There are no blocking flow decisions for the MVP. Early-reveal confirmation and explicit room-ending behavior are deferred.
