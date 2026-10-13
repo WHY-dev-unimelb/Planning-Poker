@@ -105,6 +105,40 @@ describe('room store', () => {
     expect(() => store.joinRoom('MISSING', 'Alex')).toThrow(RoomNotFoundError);
   });
 
+  it('restores the same participant and only that participant\'s active vote', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'Estimate login flow');
+    store.submitVote('ABC123', 'host-token', '5');
+    store.submitVote('ABC123', 'participant-token', '8');
+
+    const restored = store.restoreSession('ABC123', 'participant-token');
+
+    expect(restored.participantToken).toBe('participant-token');
+    expect(restored.participantRole).toBe('participant');
+    expect(restored.selectedVote).toBe('8');
+    expect(restored.room.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Alex #123', hasVoted: true }),
+        expect.objectContaining({ label: 'Sam #456', hasVoted: true }),
+      ]),
+    );
+    expect(restored.room.participants.every((participant) => !('vote' in participant))).toBe(true);
+    expect(() => store.restoreSession('ABC123', 'invalid-token')).toThrow(
+      RoomAuthorizationError,
+    );
+    expect(() => store.restoreSession('MISSING', 'participant-token')).toThrow(
+      RoomNotFoundError,
+    );
+  });
+
   it('lets the host add a trimmed story and starts voting', () => {
     const ids = ['123', '456'];
     const tokens = ['host-token', 'participant-token'];

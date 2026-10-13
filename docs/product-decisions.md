@@ -176,3 +176,22 @@ There are no blocking product decisions for the vertical slices. Early-reveal co
 - History remains in memory only and disappears when the server restarts.
 - An invalid repeated reveal cannot append a duplicate snapshot.
 
+## 11. Same-tab session restoration
+
+### Decision
+
+- The client stores the room code and private participant token in `sessionStorage` after creating or joining a room.
+- Refreshing the same tab restores the existing participant identity and role through a token-authenticated endpoint.
+- During active voting, the restore response returns only the token owner's selected estimate.
+- Closing the tab ends the stored browser session because `sessionStorage` is tab-scoped.
+- Missing rooms and invalid tokens clear stale stored credentials and return the user to room entry with a useful message.
+
+### Consequences
+
+- Refresh does not create a duplicate participant.
+- A host refresh retains host permissions.
+- A participant refresh cannot gain host controls.
+- Other participants' unrevealed estimates remain absent from public and restored room state.
+- Reopening the application in a new tab requires joining again and creates a new participant identity.
+- Server restart still deletes the room and makes the stored session invalid.
+

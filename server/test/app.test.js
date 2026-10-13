@@ -108,6 +108,56 @@ describe('room participation endpoints', () => {
   });
 });
 
+describe('GET /api/rooms/:roomCode/session', () => {
+  it('restores the token owner with only their private active selection', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Estimate login flow' })
+      .expect(201);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', 'Bearer host-token')
+      .send({ value: '5' })
+      .expect(200);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .send({ value: '8' })
+      .expect(200);
+
+    const response = await request(app)
+      .get('/api/rooms/ABC123/session')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .expect(200);
+
+    expect(response.body.participantRole).toBe('participant');
+    expect(response.body.selectedVote).toBe('8');
+    expect(response.body.participantToken).toBe('participant-token-1');
+    expect(response.body.room.participants.every((participant) => !('vote' in participant))).toBe(true);
+  });
+
+  it('rejects invalid credentials and missing rooms', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+
+    await request(app)
+      .get('/api/rooms/ABC123/session')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(403);
+    await request(app)
+      .get('/api/rooms/MISSING/session')
+      .set('Authorization', 'Bearer host-token')
+      .expect(404);
+  });
+});
+
 describe('POST /api/rooms/:roomCode/story', () => {
   it('lets the host add a story and starts voting', async () => {
     const app = createTestApplication();

@@ -15,7 +15,8 @@ With approximately two hours remaining, the current sequence is:
 1. Complete the MVP handoff gate in the [MVP plan](./mvp-vertical-slices.md#mvp-handoff-gate-reviewer-can-run-and-verify-the-mvp), especially the README and clean-run instructions.
 2. Slice 8 is accepted after automated and manual verification.
 3. Slice 9 is cancelled for the current delivery scope.
-4. Slice 10 is implemented; manual browser acceptance remains.
+4. Slice 10 is accepted after automated and manual verification.
+5. Slice 11 is implemented; manual browser acceptance remains.
 
 Do not begin history, reconnection, or presence work during the assignment unless the earlier work is complete. Those features change room data ownership and lifecycle rules and are more likely to leave the application partially working.
 
@@ -124,7 +125,7 @@ Before the first story, the host enters a custom ordered set of card labels and 
 
 ## Slice 10: Room keeps completed-round history
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -163,7 +164,7 @@ Participants can review every revealed round for the current in-memory room, inc
 
 ## Slice 11: Participant rejoins the same browser session
 
-**Status:** Planned; requires a security and lifecycle decision.
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 
@@ -193,9 +194,9 @@ After refreshing or briefly disconnecting, a participant returns to the same ide
 - Server-restart stale-session test.
 - Manual refresh before and after reveal.
 
-### Open decision before implementation
+### Selected storage
 
-Choose browser storage. `sessionStorage` is safer and tab-scoped; `localStorage` survives browser restarts but increases stale-token behavior. The recommended starting point is `sessionStorage`.
+`sessionStorage` is used. It restores the session after refresh in the same tab but intentionally does not survive closing the tab. A token-authenticated restore response returns the participant role and only that participant's active unrevealed selection.
 
 ## Slice 12: Host disconnection ends the room
 
@@ -270,8 +271,8 @@ The host explicitly ends a room and every participant sees that the session has 
 | --- | --- | --- | --- | --- |
 | 1 | 8 — Preset decks | High and visible | Low–medium | Accepted |
 | — | 9 — Custom deck | High but validation-heavy | Medium | Cancelled for the current scope |
-| 2 | 10 — Round history | Useful facilitation record | Medium–high | Implemented; complete manual acceptance |
-| 4 | 11 — Session rejoin | Strong reliability benefit | High | Defer; privacy-sensitive |
+| 2 | 10 — Round history | Useful facilitation record | Medium–high | Accepted |
+| 3 | 11 — Session rejoin | Strong reliability benefit | High | Implemented; complete manual acceptance |
 | 5 | 13 — Explicit room end | Moderate lifecycle clarity | Medium | Defer until room lifecycle is designed |
 | 6 | 12 — Host disconnect | Matches the original decision | Very high | Defer; polling makes this timing-sensitive |
 

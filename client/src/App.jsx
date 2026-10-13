@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   addStory,
   createRoom,
   getRoom,
   joinRoom,
   revealEstimates,
+  restoreSession,
   startNextStory,
   startRevote,
   submitVote,
 } from './api.js';
 
 const POLLING_INTERVAL_MS = 1000;
+const SESSION_STORAGE_KEY = 'planning-poker-session';
 const DECK_PRESET_OPTIONS = [
   { value: 'fibonacci', label: 'Fibonacci — 1, 2, 3, 5, 8, 13, 21, ?' },
   { value: 'tshirt', label: 'T-shirt — XS, S, M, L, XL, ?' },
@@ -18,6 +20,7 @@ const DECK_PRESET_OPTIONS = [
 ];
 
 export default function App() {
+  const [storedSession] = useState(readStoredSession);
   const [mode, setMode] = useState('create');
   const [hostName, setHostName] = useState('');
   const [deckPreset, setDeckPreset] = useState('fibonacci');
@@ -41,6 +44,46 @@ export default function App() {
   const [nextStoryText, setNextStoryText] = useState('');
   const [nextStoryError, setNextStoryError] = useState('');
   const [isStartingNextStory, setIsStartingNextStory] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedSession));
+  const previousRoomStatus = useRef(null);
+
+  useEffect(() => {
+    if (!storedSession) {
+      return undefined;
+    }
+
+    let isActive = true;
+    restoreSession(storedSession.roomCode, storedSession.participantToken)
+      .then((session) => {
+        if (!isActive) {
+          return;
+        }
+        setRoomSession({ room: session.room, participantToken: session.participantToken });
+        setViewerRole(session.participantRole);
+        setSelectedVote(session.selectedVote);
+        setEntryMessage('Room restored');
+      })
+      .catch((requestError) => {
+        if (!isActive) {
+          return;
+        }
+        clearStoredSession();
+        setError(
+          requestError.status === 404
+            ? 'Your previous room is no longer available. Create or join a room.'
+            : 'Your previous participant session is no longer valid. Join the room again.',
+        );
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsRestoringSession(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [storedSession]);
 
   useEffect(() => {
     if (!roomSession) {
@@ -54,8 +97,14 @@ export default function App() {
         if (isActive) {
           setRoomSession((current) => ({ ...current, room: latest.room }));
         }
-      } catch {
-        // Keep the last good room state until unavailable-room handling is implemented.
+      } catch (requestError) {
+        if (isActive && (requestError.status === 404 || requestError.status === 403)) {
+          clearStoredSession();
+          setRoomSession(null);
+          setViewerRole(null);
+          setSelectedVote(null);
+          setError('This room is no longer available. Create or join a room.');
+        }
       }
     }, POLLING_INTERVAL_MS);
 
@@ -66,9 +115,11 @@ export default function App() {
   }, [roomSession?.room.code]);
 
   useEffect(() => {
-    if (roomSession?.room.status === 'voting') {
+    const currentStatus = roomSession?.room.status ?? null;
+    if (currentStatus === 'voting' && previousRoomStatus.current === 'revealed') {
       setSelectedVote(null);
     }
+    previousRoomStatus.current = currentStatus;
   }, [roomSession?.room.status]);
 
   function chooseMode(nextMode) {
@@ -83,6 +134,7 @@ export default function App() {
       const session = await action();
       setRoomSession(session);
       setViewerRole(role);
+      saveStoredSession(session.room.code, session.participantToken);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -218,6 +270,17 @@ export default function App() {
     } finally {
       setIsStartingNextStory(false);
     }
+  }
+
+  if (isRestoringSession) {
+    return (
+      <main className="page-shell">
+        <section className="panel" aria-live="polite">
+          <p className="eyebrow">Planning Poker</p>
+          <h1>Restoring your room…</h1>
+        </section>
+      </main>
+    );
   }
 
   if (roomSession) {
@@ -455,6 +518,35 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+function readStoredSession() {
+  try {
+    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+    const parsed = JSON.parse(stored);
+    if (typeof parsed.roomCode !== 'string' || typeof parsed.participantToken !== 'string') {
+      clearStoredSession();
+      return null;
+    }
+    return parsed;
+  } catch {
+    clearStoredSession();
+    return null;
+  }
+}
+
+function saveStoredSession(roomCode, participantToken) {
+  sessionStorage.setItem(
+    SESSION_STORAGE_KEY,
+    JSON.stringify({ roomCode, participantToken }),
+  );
+}
+
+function clearStoredSession() {
+  sessionStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 function RoundHistory({ rounds }) {

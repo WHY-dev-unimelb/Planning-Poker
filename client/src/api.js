@@ -1,7 +1,9 @@
 async function readResponse(response) {
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error ?? 'The request could not be completed.');
+    const error = new Error(data.error ?? 'The request could not be completed.');
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
@@ -32,6 +34,16 @@ export async function joinRoom(roomCode, participantName) {
 
 export async function getRoom(roomCode) {
   return readResponse(await fetch(`/api/rooms/${encodeURIComponent(roomCode)}`));
+}
+
+export async function restoreSession(roomCode, participantToken) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/session`, {
+      headers: {
+        Authorization: `Bearer ${participantToken}`,
+      },
+    }),
+  );
 }
 
 export async function addStory(roomCode, participantToken, storyText) {

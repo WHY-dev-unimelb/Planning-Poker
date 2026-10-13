@@ -36,6 +36,7 @@ function roomSession(participants = [
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  sessionStorage.clear();
 });
 
 describe('room entry', () => {
@@ -58,6 +59,10 @@ describe('room entry', () => {
     expect(screen.getByText('ABC123')).toBeVisible();
     expect(screen.getByText('Alex #123')).toBeVisible();
     expect(screen.getByText('Host')).toBeVisible();
+    expect(JSON.parse(sessionStorage.getItem('planning-poker-session'))).toEqual({
+      roomCode: 'ABC123',
+      participantToken: 'private-token',
+    });
   });
 
   it('rejects a blank host name before calling the API', async () => {
@@ -625,5 +630,60 @@ describe('completed round history', () => {
 
     expect(await screen.findByRole('heading', { name: 'Estimates revealed' })).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Round history' })).not.toBeInTheDocument();
+  });
+});
+
+describe('session restoration', () => {
+  it('restores the same participant and their private active selection after refresh', async () => {
+    sessionStorage.setItem(
+      'planning-poker-session',
+      JSON.stringify({ roomCode: 'ABC123', participantToken: 'private-token' }),
+    );
+    const restoredRoom = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: true },
+      { id: '456', name: 'Sam', label: 'Sam #456', role: 'participant', hasVoted: true },
+    ], {
+      status: 'voting',
+      currentStory: { text: 'Estimate login flow' },
+    }).room;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(successfulResponse({
+      room: restoredRoom,
+      participantToken: 'private-token',
+      participantRole: 'participant',
+      selectedVote: '8',
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Voting has started' })).toBeVisible();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/rooms/ABC123/session',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer private-token' }),
+      }),
+    );
+    expect(screen.getByRole('button', { name: '8' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/Your selection:/)).toHaveTextContent('Your selection: 8');
+    expect(screen.queryByRole('button', { name: 'Reveal estimates' })).not.toBeInTheDocument();
+  });
+
+  it('clears a stale stored session when the room no longer exists', async () => {
+    sessionStorage.setItem(
+      'planning-poker-session',
+      JSON.stringify({ roomCode: 'OLD123', participantToken: 'stale-token' }),
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Room not found. Check the code and try again.' }),
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your previous room is no longer available. Create or join a room.',
+    );
+    expect(sessionStorage.getItem('planning-poker-session')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Create a room' })).toBeVisible();
   });
 });

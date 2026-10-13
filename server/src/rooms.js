@@ -112,6 +112,26 @@ export function createRoomStore({
     };
   }
 
+  function restoreSession(roomCode, participantToken) {
+    const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
+    const room = rooms.get(normalizedCode);
+    if (!room) {
+      throw new RoomNotFoundError('Room not found. Check the code and try again.');
+    }
+
+    const participant = room.participants.find(({ token }) => token === participantToken);
+    if (!participant) {
+      throw new RoomAuthorizationError('This participant session is no longer valid.');
+    }
+
+    return {
+      room: toPublicRoom(room),
+      participantToken: participant.token,
+      participantRole: participant.role,
+      selectedVote: room.status === 'voting' ? room.votes.get(participant.id) ?? null : null,
+    };
+  }
+
   function addStory(roomCode, participantToken, storyText) {
     const normalizedCode = typeof roomCode === 'string' ? roomCode.trim().toUpperCase() : '';
     const room = rooms.get(normalizedCode);
@@ -288,6 +308,7 @@ export function createRoomStore({
   return {
     createRoom,
     joinRoom,
+    restoreSession,
     addStory,
     submitVote,
     revealRound,

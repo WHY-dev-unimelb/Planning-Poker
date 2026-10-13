@@ -58,6 +58,27 @@ export function createApp({ roomStore = createRoomStore() } = {}) {
     response.json({ room });
   });
 
+  app.get('/api/rooms/:roomCode/session', (request, response) => {
+    try {
+      const session = roomStore.restoreSession(
+        request.params.roomCode,
+        getBearerToken(request),
+      );
+      response.json(session);
+    } catch (error) {
+      if (error instanceof RoomNotFoundError) {
+        response.status(404).json({ error: error.message });
+        return;
+      }
+      if (error instanceof RoomAuthorizationError) {
+        response.status(403).json({ error: error.message });
+        return;
+      }
+
+      response.status(500).json({ error: 'Unable to restore the participant session.' });
+    }
+  });
+
   app.post('/api/rooms/:roomCode/story', (request, response) => {
     try {
       const room = roomStore.addStory(

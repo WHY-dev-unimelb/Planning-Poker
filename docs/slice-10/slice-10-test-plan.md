@@ -1,7 +1,7 @@
 # Slice 10 Test Plan: Room Keeps Completed-Round History
 
 - **Slice:** 10 — Room keeps completed-round history
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [Extended features vertical slices](../planning-poker-extended-features-vertical-slices.md#slice-10-room-keeps-completed-round-history)
 
@@ -156,7 +156,7 @@ Executed on 13 October 2026:
 - Server snapshot numbering, immutability, revote retention, next-story retention, and late-join access: **passed**.
 - History credential-removal check: **passed**.
 - Client history display and current-result deduplication: **passed**.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed; confirmed by the user on 13 October 2026**.
 
 ## Exit criteria
 
