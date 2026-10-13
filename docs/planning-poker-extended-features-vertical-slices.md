@@ -13,8 +13,9 @@ Use the remaining assignment time to add one demonstrable extension without weak
 With approximately two hours remaining, the current sequence is:
 
 1. Complete the MVP handoff gate in the [MVP plan](./mvp-vertical-slices.md#mvp-handoff-gate-reviewer-can-run-and-verify-the-mvp), especially the README and clean-run instructions.
-2. Complete Slice 8 manual acceptance.
-3. Begin Slice 9 only if Slice 8 is accepted and enough time remains for automated and manual verification.
+2. Slice 8 is accepted after automated and manual verification.
+3. Slice 9 is cancelled for the current delivery scope.
+4. Slice 10 is implemented; manual browser acceptance remains.
 
 Do not begin history, reconnection, or presence work during the assignment unless the earlier work is complete. Those features change room data ownership and lifecycle rules and are more likely to leave the application partially working.
 
@@ -29,7 +30,7 @@ Do not begin history, reconnection, or presence work during the assignment unles
 
 ## Slice 8: Host chooses a preset deck
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -80,7 +81,7 @@ It delivers visible user value while preserving the current state machine, polli
 
 ## Slice 9: Host creates a custom deck
 
-**Status:** Planned after Slice 8.
+**Status:** Cancelled for the current delivery scope on 13 October 2026.
 
 ### Testable user outcome
 
@@ -123,7 +124,7 @@ Before the first story, the host enters a custom ordered set of card labels and 
 
 ## Slice 10: Room keeps completed-round history
 
-**Status:** Planned; not recommended within the remaining assignment time.
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 
@@ -154,10 +155,11 @@ Participants can review every revealed round for the current in-memory room, inc
 - React test for multiple stories and revotes.
 - Manual history check across multiple clients.
 
-### Open decisions before implementation
+### Selected behavior
 
-- Whether a participant who joins later can see all earlier rounds; recommended yes for a shared room record.
-- Whether repeated reveals are prevented or treated idempotently; recommended prevent invalid state transitions as today.
+- Participants who join later can see every earlier revealed round because history is a shared room record.
+- Repeated reveal attempts remain invalid state transitions and do not create duplicate snapshots.
+- The current revealed result remains in the main results view; the history section shows prior rounds so the current result is not duplicated.
 
 ## Slice 11: Participant rejoins the same browser session
 
@@ -266,9 +268,9 @@ The host explicitly ends a room and every participant sees that the session has 
 
 | Priority | Slice | Value | Delivery risk | Recommendation |
 | --- | --- | --- | --- | --- |
-| 1 | 8 — Preset decks | High and visible | Low–medium | Implemented; complete manual acceptance |
-| 2 | 9 — Custom deck | High but validation-heavy | Medium | Attempt only if Slice 8 is accepted early |
-| 3 | 10 — Round history | Useful facilitation record | Medium–high | Defer beyond the assignment |
+| 1 | 8 — Preset decks | High and visible | Low–medium | Accepted |
+| — | 9 — Custom deck | High but validation-heavy | Medium | Cancelled for the current scope |
+| 2 | 10 — Round history | Useful facilitation record | Medium–high | Implemented; complete manual acceptance |
 | 4 | 11 — Session rejoin | Strong reliability benefit | High | Defer; privacy-sensitive |
 | 5 | 13 — Explicit room end | Moderate lifecycle clarity | Medium | Defer until room lifecycle is designed |
 | 6 | 12 — Host disconnect | Matches the original decision | Very high | Defer; polling makes this timing-sensitive |
