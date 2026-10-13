@@ -1,7 +1,7 @@
 # Slice 6 Test Plan: Host Starts a Revote
 
 - **Slice:** 6 — Host starts a revote
-- **Status:** Implemented; automated verification passed
+- **Status:** Accepted; automated and manual verification passed
 - **Recorded:** 13 October 2026
 - **Related plan:** [MVP vertical slices](../mvp-vertical-slices.md#slice-6-host-starts-a-revote)
 
@@ -156,7 +156,7 @@ Executed on 13 October 2026:
 - Live API revealed-value removal: **passed**.
 - Live API participant authorization rejection: **passed** with status `403`.
 - Live API fresh vote after reset: **passed** with status `200`.
-- Manual browser procedure: **pending user confirmation**.
+- Manual browser procedure: **passed; confirmed by the user on 13 October 2026**.
 
 ## Exit criteria
 

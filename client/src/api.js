@@ -82,3 +82,16 @@ export async function startRevote(roomCode, participantToken) {
   );
 }
 
+export async function startNextStory(roomCode, participantToken, storyText) {
+  return readResponse(
+    await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/next-story`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${participantToken}`,
+      },
+      body: JSON.stringify({ storyText }),
+    }),
+  );
+}
+

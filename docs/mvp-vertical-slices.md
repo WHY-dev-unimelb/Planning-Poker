@@ -188,7 +188,7 @@ The host reveals the round and every participant sees the submitted estimates, i
 
 ## Slice 6: Host starts a revote
 
-**Status:** Implemented; automated checks passed, manual browser acceptance pending.
+**Status:** Accepted; automated and manual checks passed.
 
 ### Testable user outcome
 
@@ -219,6 +219,8 @@ After reveal, the host starts a new vote for the same story and all previous vot
 - Manual check: vote, reveal, revote, and confirm all clients return to a clean voting state.
 
 ## Slice 7: Host moves to the next story
+
+**Status:** Implemented; automated checks passed, manual browser acceptance pending.
 
 ### Testable user outcome
 

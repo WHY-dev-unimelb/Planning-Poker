@@ -246,6 +246,12 @@ button:disabled {
   margin-bottom: 24px;
 }
 
+.next-story-form {
+  padding-top: 22px;
+  margin-top: 22px;
+  border-top: 1px solid #e3e8f1;
+}
+
 .story-section h2 {
   margin-bottom: 8px;
 }

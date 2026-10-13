@@ -5,6 +5,7 @@ import {
   getRoom,
   joinRoom,
   revealEstimates,
+  startNextStory,
   startRevote,
   submitVote,
 } from './api.js';
@@ -31,6 +32,9 @@ export default function App() {
   const [isRevealing, setIsRevealing] = useState(false);
   const [roundActionError, setRoundActionError] = useState('');
   const [isRestartingVote, setIsRestartingVote] = useState(false);
+  const [nextStoryText, setNextStoryText] = useState('');
+  const [nextStoryError, setNextStoryError] = useState('');
+  const [isStartingNextStory, setIsStartingNextStory] = useState(false);
 
   useEffect(() => {
     if (!roomSession) {
@@ -184,6 +188,32 @@ export default function App() {
     }
   }
 
+  async function handleNextStory(event) {
+    event.preventDefault();
+    const normalizedStory = nextStoryText.trim();
+    if (!normalizedStory) {
+      setNextStoryError('Enter the next story to start voting.');
+      return;
+    }
+
+    setNextStoryError('');
+    setIsStartingNextStory(true);
+    try {
+      const latest = await startNextStory(
+        roomSession.room.code,
+        roomSession.participantToken,
+        normalizedStory,
+      );
+      setSelectedVote(null);
+      setNextStoryText('');
+      setRoomSession((current) => ({ ...current, room: latest.room }));
+    } catch (requestError) {
+      setNextStoryError(requestError.message);
+    } finally {
+      setIsStartingNextStory(false);
+    }
+  }
+
   if (roomSession) {
     const isVoting = roomSession.room.status === 'voting';
     const isRevealed = roomSession.room.status === 'revealed';
@@ -265,6 +295,21 @@ export default function App() {
                     {isRestartingVote ? 'Starting revote…' : 'Revote'}
                   </button>
                   <FormMessage error={roundActionError} />
+                  <form className="next-story-form" onSubmit={handleNextStory} noValidate>
+                    <label htmlFor="next-story-text">Next story</label>
+                    <textarea
+                      id="next-story-text"
+                      name="nextStoryText"
+                      value={nextStoryText}
+                      onChange={(event) => setNextStoryText(event.target.value)}
+                      maxLength={500}
+                      rows={3}
+                    />
+                    <FormMessage error={nextStoryError} />
+                    <button type="submit" disabled={isStartingNextStory}>
+                      {isStartingNextStory ? 'Starting next story…' : 'Start next story'}
+                    </button>
+                  </form>
                 </div>
               )}
             </>

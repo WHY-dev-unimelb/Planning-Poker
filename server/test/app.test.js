@@ -348,3 +348,90 @@ describe('POST /api/rooms/:roomCode/revote', () => {
   });
 });
 
+describe('POST /api/rooms/:roomCode/next-story', () => {
+  async function prepareRevealedRoom(app) {
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    const join = await request(app)
+      .post('/api/rooms/ABC123/participants')
+      .send({ participantName: 'Sam' })
+      .expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'First story' })
+      .expect(201);
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${join.body.participantToken}`)
+      .send({ value: '8' })
+      .expect(200);
+    await request(app)
+      .post('/api/rooms/ABC123/reveal')
+      .set('Authorization', 'Bearer host-token')
+      .expect(200);
+    return join.body.participantToken;
+  }
+
+  it('lets the host start a clean vote for a replacement story', async () => {
+    const app = createTestApplication();
+    const participantToken = await prepareRevealedRoom(app);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/next-story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: '  Second story  ' })
+      .expect(201);
+
+    expect(response.body.room.status).toBe('voting');
+    expect(response.body.room.currentStory).toEqual({ text: 'Second story' });
+    expect(response.body.room.participants.every(({ hasVoted }) => !hasVoted)).toBe(true);
+    expect(response.body.room.participants.every((participant) => !('vote' in participant))).toBe(true);
+
+    await request(app)
+      .put('/api/rooms/ABC123/vote')
+      .set('Authorization', `Bearer ${participantToken}`)
+      .send({ value: '13' })
+      .expect(200);
+  });
+
+  it('rejects a blank next story', async () => {
+    const app = createTestApplication();
+    await prepareRevealedRoom(app);
+
+    const response = await request(app)
+      .post('/api/rooms/ABC123/next-story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: '   ' })
+      .expect(400);
+
+    expect(response.body).toEqual({ error: 'Enter the next story to start voting.' });
+  });
+
+  it('rejects the next story before reveal', async () => {
+    const app = createTestApplication();
+    await request(app).post('/api/rooms').send({ hostName: 'Alex' }).expect(201);
+    await request(app)
+      .post('/api/rooms/ABC123/story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'First story' })
+      .expect(201);
+
+    await request(app)
+      .post('/api/rooms/ABC123/next-story')
+      .set('Authorization', 'Bearer host-token')
+      .send({ storyText: 'Second story' })
+      .expect(409);
+  });
+
+  it('forbids a participant from starting the next story', async () => {
+    const app = createTestApplication();
+    const participantToken = await prepareRevealedRoom(app);
+
+    await request(app)
+      .post('/api/rooms/ABC123/next-story')
+      .set('Authorization', `Bearer ${participantToken}`)
+      .send({ storyText: 'Second story' })
+      .expect(403);
+  });
+});
+

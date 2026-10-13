@@ -1,0 +1,106 @@
+$baseUrl = "http://localhost:3001"
+
+function Invoke-ExpectedError {
+    param(
+        [string]$Uri,
+        [string]$Token,
+        [string]$Story
+    )
+
+    try {
+        $response = Invoke-WebRequest `
+            -Method Post `
+            -Uri $Uri `
+            -Headers @{ Authorization = "Bearer $Token" } `
+            -ContentType "application/json" `
+            -Body (@{ storyText = $Story } | ConvertTo-Json) `
+            -ErrorAction Stop
+
+        return [int]$response.StatusCode
+    }
+    catch {
+        if ($null -eq $_.Exception.Response) {
+            throw
+        }
+
+        return [int]$_.Exception.Response.StatusCode
+    }
+}
+
+# Create a room
+$hostSession = Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms" `
+    -ContentType "application/json" `
+    -Body '{"hostName":"Host"}'
+
+$roomCode = $hostSession.room.code
+$hostToken = $hostSession.participantToken
+
+# Join as a participant
+$participantSession = Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/participants" `
+    -ContentType "application/json" `
+    -Body '{"participantName":"Participant"}'
+
+$participantToken = $participantSession.participantToken
+
+# Add the first story, putting the room into voting
+Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/story" `
+    -Headers @{ Authorization = "Bearer $hostToken" } `
+    -ContentType "application/json" `
+    -Body '{"storyText":"First story"}' |
+    Out-Null
+
+# Test 1: host tries Next story before reveal
+$hostStatus = Invoke-ExpectedError `
+    -Uri "$baseUrl/api/rooms/$roomCode/next-story" `
+    -Token $hostToken `
+    -Story "Second story"
+
+$afterHostAttempt = Invoke-RestMethod `
+    -Method Get `
+    -Uri "$baseUrl/api/rooms/$roomCode"
+
+# Reveal the first round
+Invoke-RestMethod `
+    -Method Post `
+    -Uri "$baseUrl/api/rooms/$roomCode/reveal" `
+    -Headers @{ Authorization = "Bearer $hostToken" } |
+    Out-Null
+
+# Test 2: participant tries to start the next story
+$participantStatus = Invoke-ExpectedError `
+    -Uri "$baseUrl/api/rooms/$roomCode/next-story" `
+    -Token $participantToken `
+    -Story "Second story"
+
+$afterParticipantAttempt = Invoke-RestMethod `
+    -Method Get `
+    -Uri "$baseUrl/api/rooms/$roomCode"
+
+# Display results
+$results = [PSCustomObject]@{
+    HostBeforeRevealStatus    = $hostStatus
+    StateAfterHostAttempt     = $afterHostAttempt.room.status
+    ParticipantAttemptStatus = $participantStatus
+    StateAfterParticipant     = $afterParticipantAttempt.room.status
+}
+
+$results | Format-List
+
+$passed =
+    $hostStatus -eq 409 -and
+    $afterHostAttempt.room.status -eq "voting" -and
+    $participantStatus -eq 403 -and
+    $afterParticipantAttempt.room.status -eq "revealed"
+
+if ($passed) {
+    Write-Host "TEST F PASSED" -ForegroundColor Green
+}
+else {
+    Write-Host "TEST F FAILED" -ForegroundColor Red
+}

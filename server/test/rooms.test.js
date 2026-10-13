@@ -249,5 +249,53 @@ describe('room store', () => {
       RoomAuthorizationError,
     );
   });
+
+  it('starts a clean vote for the next story and discards the previous result', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'First story');
+    store.submitVote('ABC123', 'host-token', '5');
+    store.submitVote('ABC123', 'participant-token', '8');
+    store.revealRound('ABC123', 'host-token');
+
+    const room = store.startNextStory('ABC123', 'host-token', '  Second story  ');
+
+    expect(room.status).toBe('voting');
+    expect(room.currentStory).toEqual({ text: 'Second story' });
+    expect(room.participants.every(({ hasVoted }) => hasVoted === false)).toBe(true);
+    expect(room.participants.every((participant) => !Object.hasOwn(participant, 'vote'))).toBe(true);
+    expect(store.submitVote('ABC123', 'participant-token', '13').selectedVote).toBe('13');
+  });
+
+  it('allows only the host to start a non-blank next story after reveal', () => {
+    const ids = ['123', '456'];
+    const tokens = ['host-token', 'participant-token'];
+    const store = createRoomStore({
+      codeGenerator: () => 'ABC123',
+      idGenerator: () => ids.shift(),
+      tokenGenerator: () => tokens.shift(),
+    });
+    store.createRoom('Alex');
+    store.joinRoom('ABC123', 'Sam');
+    store.addStory('ABC123', 'host-token', 'First story');
+
+    expect(() => store.startNextStory('ABC123', 'host-token', 'Second story')).toThrow(
+      RoomStateError,
+    );
+    store.revealRound('ABC123', 'host-token');
+    expect(() => store.startNextStory('ABC123', 'participant-token', 'Second story')).toThrow(
+      RoomAuthorizationError,
+    );
+    expect(() => store.startNextStory('ABC123', 'host-token', '   ')).toThrow(
+      RoomValidationError,
+    );
+  });
 });
 

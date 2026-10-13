@@ -390,6 +390,7 @@ describe('revealing estimates', () => {
     ).toBeVisible();
     expect(screen.getByText('No vote')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Revote' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Next story')).not.toBeInTheDocument();
   });
 });
 
@@ -444,5 +445,85 @@ describe('revoting', () => {
     expect(screen.getByRole('button', { name: '8' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByText('Not voted')).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Estimates' })).not.toBeInTheDocument();
+  });
+});
+
+describe('starting the next story', () => {
+  function hostRooms() {
+    const votingRoom = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+    ], {
+      status: 'voting',
+      currentStory: { text: 'First story' },
+    }).room;
+    const revealedRoom = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', vote: '8' },
+    ], {
+      status: 'revealed',
+      currentStory: { text: 'First story' },
+      deck: ['1', '2', '3', '5', '8', '13', '21', '?'],
+    }).room;
+    const nextVotingRoom = roomSession([
+      { id: '123', name: 'Alex', label: 'Alex #123', role: 'host', hasVoted: false },
+    ], {
+      status: 'voting',
+      currentStory: { text: 'Second story' },
+    }).room;
+    return { votingRoom, revealedRoom, nextVotingRoom };
+  }
+
+  it('lets the host replace the revealed story and begin a clean vote', async () => {
+    const user = userEvent.setup();
+    const { votingRoom, revealedRoom, nextVotingRoom } = hostRooms();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: votingRoom }))
+      .mockResolvedValueOnce(successfulResponse({ room: revealedRoom }))
+      .mockResolvedValueOnce(successfulResponse({ room: nextVotingRoom }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.type(await screen.findByLabelText('Story'), 'First story');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+    await user.click(await screen.findByRole('button', { name: 'Reveal estimates' }));
+    await user.type(await screen.findByLabelText('Next story'), '  Second story  ');
+    await user.click(screen.getByRole('button', { name: 'Start next story' }));
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      4,
+      '/api/rooms/ABC123/next-story',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer private-token' }),
+        body: JSON.stringify({ storyText: 'Second story' }),
+      }),
+    );
+    expect(await screen.findByRole('heading', { name: 'Voting has started' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Second story' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Estimates' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '8' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText('Not voted')).toBeVisible();
+  });
+
+  it('rejects a blank next story before calling the API', async () => {
+    const user = userEvent.setup();
+    const { votingRoom, revealedRoom } = hostRooms();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(successfulResponse(roomSession()))
+      .mockResolvedValueOnce(successfulResponse({ room: votingRoom }))
+      .mockResolvedValueOnce(successfulResponse({ room: revealedRoom }));
+
+    render(<App />);
+    await user.type(screen.getByLabelText('Your name'), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Create room' }));
+    await user.type(await screen.findByLabelText('Story'), 'First story');
+    await user.click(screen.getByRole('button', { name: 'Add story and start voting' }));
+    await user.click(await screen.findByRole('button', { name: 'Reveal estimates' }));
+    await user.type(await screen.findByLabelText('Next story'), '   ');
+    await user.click(screen.getByRole('button', { name: 'Start next story' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter the next story to start voting.');
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 });
