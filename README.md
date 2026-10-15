@@ -4,13 +4,26 @@ A lightweight, browser-based Planning Poker application for collaborative story 
 
 The project was built as a time-boxed (6 hours), vertically sliced software engineering project. It uses an in-memory server and short-interval HTTP polling to provide multi-user collaboration without accounts, a database, or WebSockets.
 
-### History of my interaction with AI tool
+### History of My Interaction with the AI Tool
 
-The primary AI interaction record for this project can be access via this link: [【Project】Planning Poker](https://chatgpt.com/s/cx_6ad0bc3823bc8191bf9058c9ce932fce). 
+The [complete shared chat](https://chatgpt.com/s/cx_6ad0bc3823bc8191bf9058c9ce932fce) is the primary record of how Codex supported requirements analysis, product decisions, implementation, testing, and documentation. Focused branch conversations were used for isolated questions, including the final cross-slice review, while durable decisions and outcomes were kept in repository documentation.
 
-I used this as the authoritative thread for requirements analysis, product decisions, implementation, testing and documentation updates. I occasionally opened branches for focused questions, while retaining the relevant decisions and outcomes in the main conversation so that the development process remained traceable and easy to export for this assignment. 
+The [`docs/ai interaction screenshots`](<docs/ai interaction screenshots/>) folder contains a curated set of prompt-and-response screenshots so that the main decision points can be reviewed without reading the entire chat:
 
-For more details on my interactions with AI tools, please refer to my report.
+| Screenshot | What it shows |
+| --- | --- |
+| [1. Requirements](<docs/ai interaction screenshots/1.requirements.png>) | The initial brief analysis, separating clear requirements, assumptions, open questions, optional scope, and the 6–8 hour constraint. |
+| [2. MVP planning](<docs/ai interaction screenshots/2.MVP planning.png>) | AI-generated product options and trade-offs for rooms, host permissions, voting, reveal, rounds, disconnection, and persistence. |
+| [3. Product decisions](<docs/ai interaction screenshots/3.product decisions.png>) | My selected behaviours and the resulting repository decision record, demonstrating that final product choices remained human-controlled. |
+| [4. User flow](<docs/ai interaction screenshots/4.user flow.png>) | My selection of the lobby-first flow and the resulting updates to the product decisions and MVP user-flow documents. |
+| [5. Architecture](<docs/ai interaction screenshots/5.architecture.png>) | Comparison of client-only React, React with an HTTP API, and React with Express plus Socket.IO. |
+| [6. Architecture reflection](<docs/ai interaction screenshots/6.architecture reflection.png>) | A deliberate challenge to my preferred HTTP approach, including polling, privacy, state-authority, and time-box risks. |
+| [6. Vertical slices](<docs/ai interaction screenshots/6.vertical slices.png>) | The decision to defer extended features and divide the MVP into small, testable vertical slices. |
+| [7. Vertical-slice development and testing](<docs/ai interaction screenshots/7.vertical slice development & testing.png>) | The repeated acceptance gate: I confirmed tests and manual behaviour before authorising documentation updates and the next slice. |
+| [8. Extended-features planning](<docs/ai interaction screenshots/8.Extended features planning.png>) | Extension planning only after the complete MVP had passed verification, with remaining time treated as a scope constraint. |
+| [9. Usability improvement](<docs/ai interaction screenshots/9.usability improvement.png>) | Human-observed usability problems being reviewed and converted into the focused Slice 14 specification. |
+
+These screenshots complement, rather than replace, the linked plans, commits, automated tests, and manual verification evidence.
 
 ### Technology stack
 
@@ -81,9 +94,11 @@ server/
   src/server.js       API process entry point
   test/               Room-store and HTTP API tests
 docs/
+  ai interaction screenshots/ Curated AI prompt-and-response evidence
   product-decisions.md
   mvp-*.md            MVP flow and vertical-slice plan
   planning-poker-extended-features-vertical-slices.md
+  Vertical Slice Development Workflow.png
   slice-*/            Per-slice test plans and Manual Verification evidence
     Manual Verification/  Human-run screenshots and recordings
   slice-1-14-review.md Final cross-slice review and resolutions
@@ -124,33 +139,24 @@ There is currently no repository CI/CD workflow or lint script; tests and the pr
 
 AI support was integrated throughout the software development lifecycle, while product decisions, acceptance, and integration remained under human control.
 
-### Project organisation and planning
+*Table 1. Development phases, produced artefacts, human–AI collaboration, and Git evidence*
 
-The work began with a [product decision record](docs/product-decisions.md), comparison of feasible technical approaches, and selection of a lobby-first [user flow](docs/mvp-user-flow.md). Requirements were separated into confirmed behavior, assumptions, open questions, and deferred options before implementation. The repository history preserves planning separately from implementation.
+| Development phase | Produced artefacts | Human-in-the-loop collaboration | Git evidence |
+| --- | --- | --- | --- |
+| 1. Initial planning | Product decision record; lobby-first user flow; technical approach | **AI:** analysed requirements and proposed options. **Human:** selected the product direction and made the final decisions. | [Decisions](https://github.com/WHY-dev-unimelb/Planning-Poker/commit/c167e28); [user flow](https://github.com/WHY-dev-unimelb/Planning-Poker/commit/5898cc1) |
+| 2. MVP planning | MVP scope; Slices 1–7 plan; acceptance checks; test strategy | **AI:** proposed slice boundaries and acceptance checks. **Human:** approved the scope, order, and priorities. | [MVP documentation](https://github.com/WHY-dev-unimelb/Planning-Poker/commit/bcbea0e) |
+| 3. MVP vertical-slice development | Working MVP; automated tests; slice test plans; manual verification evidence; updated documentation | **AI:** assisted implementation, test planning, and automated testing. **Human:** performed manual verification and accepted each slice. | [Slices 1–7](https://github.com/WHY-dev-unimelb/Planning-Poker/compare/6b9284f...6577b52) |
+| 4. Feature-extension planning | Extended-feature plan; priority decisions; revised slice scope; Slice 9 cancellation record | **AI:** proposed possible extensions. **Human:** approved, deferred, or cancelled features. | [Extension plan](https://github.com/WHY-dev-unimelb/Planning-Poker/commit/d3fce30); [Slice 9 cancelled](https://github.com/WHY-dev-unimelb/Planning-Poker/commit/83a019f) |
+| 5. Feature-extension vertical-slice development | Slices 8 and 10–13; extended-feature tests; manual verification evidence; supporting documentation | **AI:** assisted implementation and regression testing. **Human:** performed manual verification and accepted each extension. | [Slice 8](https://github.com/WHY-dev-unimelb/Planning-Poker/commit/20cc084); [Slices 10–13](https://github.com/WHY-dev-unimelb/Planning-Poker/compare/b7a3615...cc1dcb7) |
+| 6. Usability improvement and final review | Slice 14 usability improvements; code-review findings; review fixes and regression tests; updated README | **AI:** supported refinement, code review, and regression testing. **Human:** identified issues, evaluated findings, and validated the final result. | [Plan and clarification](https://github.com/WHY-dev-unimelb/Planning-Poker/compare/e3a79b7...caf2521); [Slice 14](https://github.com/WHY-dev-unimelb/Planning-Poker/commit/dd3cb1d); [review and fixes](https://github.com/WHY-dev-unimelb/Planning-Poker/compare/1220823...fc0d68a) |
 
-### MVP phase
+### Repeated vertical-slice workflow
 
-The [MVP plan](docs/mvp-vertical-slices.md) divided the core flow into Slices 1–7: create a room, join and synchronize the lobby, add a story, vote privately, reveal, revote, and move to the next story. Each slice delivered a testable user outcome across the React client, HTTP API, in-memory domain rules, automated tests, and manual acceptance checks.
+Each implementation slice followed the same human-in-the-loop engineering cycle. AI assisted with implementation and test planning, but automated tests and manual verification acted as separate gates. I accepted, revised, or rejected the result before documentation and commit.
 
-### Extended features phase
+![Vertical Slice Development Workflow](<docs/Vertical Slice Development Workflow.png>)
 
-After the MVP passed its acceptance checks, a separate [extended-features plan](docs/planning-poker-extended-features-vertical-slices.md) introduced preset decks, completed-round history, same-tab restoration, host-disconnection handling, and explicit room ending. Custom decks were deliberately cancelled as Slice 9 to protect the time box and avoid partially delivering validation-heavy functionality.
-
-### Vertical slice development
-
-Each slice was planned small enough for a focused commit and described by one user outcome, affected areas, acceptance criteria, and tests. Implementation proceeded only after product decisions were confirmed. Automated checks were followed by human-run browser scenarios, with the resulting screenshots and recordings kept in each slice's `Manual Verification` directory.
-
-### Usability improvement phase
-
-Slice 14 consolidated observed usability issues: copying room codes, identifying the current user, leaving rooms, returning home, and remembering display names. Follow-up decisions removed duplicate host actions while retaining a clear exit from an ended room. The [Slice 14 specification](docs/slice-14/slice-14-usability-improvements.md) and [test plan](docs/slice-14/slice-14-test-plan.md) capture the final behavior.
-
-### AI-assisted final code review
-
-After Slices 1–14, an AI-assisted read-only review examined security, logic, reliability, and edge cases across the complete codebase. It produced five concrete findings: missing server-side length limits, uncapped room participation, unsafe storage-failure handling, overlapping/stale polling requests, and copy feedback that did not reset. All five were fixed and regression-tested; details and verification results are in the [review report](docs/slice-1-14-review.md).
-
-### Collaboration workflow
-
-AI assisted with requirement analysis, trade-off challenges, slice planning, documentation, implementation, test creation, debugging, and the final review. The human developer selected product behavior, approved material decisions, ran and confirmed the documented manual checks for accepted slices, decided what to defer or cancel, and retained responsibility for validation and integration. Pending checks remained explicitly recorded. This created a repeated loop of **decide → implement → automate → manually verify → document → commit**.
+The underlying evidence remains available in the [MVP plan](docs/mvp-vertical-slices.md), [extended-feature plan](docs/planning-poker-extended-features-vertical-slices.md), per-slice `Manual Verification` folders, [Slice 14 specification](docs/slice-14/slice-14-usability-improvements.md), and [final review](docs/slice-1-14-review.md).
 
 ## Current limitations
 
