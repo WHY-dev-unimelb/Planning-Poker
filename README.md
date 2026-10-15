@@ -4,6 +4,14 @@ A lightweight, browser-based Planning Poker application for collaborative story 
 
 The project was built as a time-boxed (6 hours), vertically sliced software engineering project. It uses an in-memory server and short-interval HTTP polling to provide multi-user collaboration without accounts, a database, or WebSockets.
 
+### History of my interaction with AI tool
+
+The primary AI interaction record for this project can be access via this link: [【Project】Planning Poker](https://chatgpt.com/s/cx_6ad0bc3823bc8191bf9058c9ce932fce). 
+
+I used this as the authoritative thread for requirements analysis, product decisions, implementation, testing and documentation updates. I occasionally opened branches for focused questions, while retaining the relevant decisions and outcomes in the main conversation so that the development process remained traceable and easy to export for this assignment. 
+
+For more details on my interactions with AI tools, please refer to my report.
+
 ### Technology stack
 
 | Area | Technology |
