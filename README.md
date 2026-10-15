@@ -76,7 +76,8 @@ docs/
   product-decisions.md
   mvp-*.md            MVP flow and vertical-slice plan
   planning-poker-extended-features-vertical-slices.md
-  slice-*/            Per-slice test plans and manual evidence
+  slice-*/            Per-slice test plans and Manual Verification evidence
+    Manual Verification/  Human-run screenshots and recordings
   slice-1-14-review.md Final cross-slice review and resolutions
 ```
 
@@ -105,7 +106,7 @@ npm run test --workspace client
 npm run test --workspace server
 ```
 
-Testing covers room rules, HTTP behavior, authorization, hidden-vote privacy, state transitions, session restoration, lifecycle handling, browser-storage failures, non-overlapping polling, and React interactions. Each implemented slice also has a manual browser test plan and recorded evidence under `docs/slice-*`.
+Testing covers room rules, HTTP behavior, authorization, hidden-vote privacy, state transitions, session restoration, lifecycle handling, browser-storage failures, non-overlapping polling, and React interactions. Each implemented slice also has a manual browser test plan, with human-run screenshots and recordings stored under `docs/slice-*/Manual Verification/`.
 
 The final [Slices 1–14 review](docs/slice-1-14-review.md) records 33 passing client tests, 59 passing server tests, and a successful production build. It also documents five resolved validation, capacity, storage, polling, and feedback issues. A production dependency vulnerability audit was not completed because registry access was unavailable during that review.
 
@@ -129,7 +130,7 @@ After the MVP passed its acceptance checks, a separate [extended-features plan](
 
 ### Vertical slice development
 
-Each slice was planned small enough for a focused commit and described by one user outcome, affected areas, acceptance criteria, and tests. Implementation proceeded only after product decisions were confirmed. Automated checks were followed by human-run browser scenarios, with results recorded in each slice's test-plan directory.
+Each slice was planned small enough for a focused commit and described by one user outcome, affected areas, acceptance criteria, and tests. Implementation proceeded only after product decisions were confirmed. Automated checks were followed by human-run browser scenarios, with the resulting screenshots and recordings kept in each slice's `Manual Verification` directory.
 
 ### Usability improvement phase
 
